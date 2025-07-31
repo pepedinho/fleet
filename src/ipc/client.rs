@@ -1,4 +1,4 @@
-use tokio::{io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader}, net::UnixStream};
+use tokio::{io::{AsyncBufReadExt, AsyncWriteExt, BufReader}, net::UnixStream};
 
 use crate::ipc::server::{DaemonRequest, DaemonResponse};
 

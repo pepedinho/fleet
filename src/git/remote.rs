@@ -1,4 +1,4 @@
-use git2::{Remote, Repository};
+use git2::Remote;
 
 pub fn get_remote_branch_hash(url: &str, branch: &str) -> Result<String, git2::Error> {
     // On crée un repo temporaire en mémoire

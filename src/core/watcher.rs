@@ -1,7 +1,6 @@
 use anyhow::Ok;
-use serde::{Deserialize, Serialize};
 
-use crate::{config::parser::ProjectConfig, exec::runner::run_update, git::{remote::get_remote_branch_hash, repo::Repo}};
+use crate::{config::parser::ProjectConfig, git::{remote::get_remote_branch_hash, repo::Repo}};
 
 
 #[derive(Debug, Clone)]

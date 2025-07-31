@@ -1,8 +1,8 @@
-use std::{io::{Read, Write}, os::{linux::raw::stat}, sync::Arc};
+use std::sync::Arc;
 
-use crate::{config::parser::ProjectConfig, core::{state::{AppState, SharedState}, watcher::WatchContext}, git::repo::Repo};
+use crate::{config::parser::ProjectConfig, core::{state::AppState, watcher::WatchContext}, git::repo::Repo};
 use serde::{Deserialize, Serialize};
-use tokio::{io::AsyncWriteExt, net::UnixStream};
+use tokio::{io::{AsyncWriteExt, WriteHalf}, net::UnixStream};
 use uuid::Uuid;
 
 
@@ -42,7 +42,7 @@ pub enum DaemonResponse {
     ListWatches(Vec<WatchInfo>)
 }
 
-pub async fn handle_request(req: DaemonRequest, state: Arc<AppState>,stream: &mut UnixStream) -> Result<(), anyhow::Error> {
+pub async fn handle_request(req: DaemonRequest, state: Arc<AppState>,stream: &mut WriteHalf<UnixStream>) -> Result<(), anyhow::Error> {
     let response = match req {
         DaemonRequest::AddWatch { project_dir, branch, repo, update_cmds } => {
             let ctx = WatchContext {

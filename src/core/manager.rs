@@ -1,6 +1,6 @@
-use std::{io::Read, path::Path, sync::Arc, time::Duration};
+use std::{path::Path, sync::Arc, time::Duration};
 
-use tokio::{io::AsyncReadExt, net::UnixListener, time::interval};
+use tokio::{io::{split, AsyncBufReadExt, AsyncReadExt, BufReader}, net::UnixListener, time::interval};
 
 use crate::{core::{state::AppState, watcher::watch_once}, ipc::server::{handle_request, DaemonRequest}};
 
@@ -39,8 +39,10 @@ pub async fn start_socket_listener(state: Arc<AppState>) -> anyhow::Result<()> {
 
         let state = Arc::clone(&state);
         tokio::spawn(async move {
+            let (read_half, mut write_half) = split(stream);
+            let mut reader = BufReader::new(read_half);
             let mut buf = String::new();
-            if let Err(e) = stream.read_to_string(&mut buf).await {
+            if let Err(e) = reader.read_line(&mut buf).await {
                 eprintln!("❌ Failed to read from stream: {}", e);
                 return;
             }
@@ -48,7 +50,7 @@ pub async fn start_socket_listener(state: Arc<AppState>) -> anyhow::Result<()> {
             let parsed: Result<DaemonRequest, _> = serde_json::from_str(&buf);
             match parsed {
                 Ok(req) => {
-                    if let Err(e) = handle_request(req, state, &mut stream).await {
+                    if let Err(e) = handle_request(req, state, &mut write_half).await {
                         eprintln!("❌ Request handling failed: {}", e);
                     }
                     println!("oui");

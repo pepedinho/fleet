@@ -1,8 +1,7 @@
-use std::{fs, os::unix::net::UnixListener, path::Path, sync::Arc};
+use std::sync::Arc;
 
-use clap::Parser;
 
-use crate::{app::handle_watch, cli::{Cli, Commands}, core::{manager::{start_socket_listener, supervisor_loop}, state::{self, AppState}}, ipc::server::handle_request};
+use crate::core::{manager::{start_socket_listener, supervisor_loop}, state::AppState};
 
 mod cli;
 mod config;
