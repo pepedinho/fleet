@@ -1,0 +1,10 @@
+update:
+  - docker compose down
+  - docker compose up --build -d
+
+on_confliot:
+  - echo "un conflit est survenu"
+  - git reset --hard origin/main
+
+post_update:
+  - echo "update terminé"
