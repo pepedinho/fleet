@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use crate::{config::{self, parser::load_config}, git::repo::Repo};
+use crate::{config::parser::load_config, core::watcher::WatchRequest, git::repo::Repo, ipc::{client::send_watch_request, server::DaemonRequest}};
 
 
 pub fn handle_watch(branch_cli: Option<String>) -> Result<(), Box<dyn std::error::Error>> {
@@ -10,23 +10,24 @@ pub fn handle_watch(branch_cli: Option<String>) -> Result<(), Box<dyn std::error
     }
 
     let config = load_config(&config_path)?;
-
     let repo = Repo::build()?;
 
-    let branch = match branch_cli {
-        Some(b) => b,
-        _ => {
-            if let Some(br) = config.branch {
-                 br
-            } else {
-                repo.branch
-            }
-        }
-    };
+    let branch = branch_cli
+        .or(config.branch.clone())
+        .unwrap_or(repo.branch.clone());
 
     println!("Branche sélectionnée : {}", branch);
-    println!("Remote : {}", repo.remote);
-    println!("Dernier commit local : {}", repo.last_commit);
+    println!("Remote : {}", &repo.remote);
+    println!("Dernier commit local : {}", &repo.last_commit);
+
+    let watch_req = DaemonRequest::AddWatch {
+        project_dir: std::env::current_dir()?.to_string_lossy().into_owned(),
+        branch,
+        repo,
+        update_cmds: config.update.clone(),
+    };
+
+    send_watch_request(watch_req)?;
 
     todo!()
 }
