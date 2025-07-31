@@ -1,8 +1,8 @@
-use std::{fs, os::unix::net::UnixListener, path::Path};
+use std::{fs, os::unix::net::UnixListener, path::Path, sync::Arc};
 
 use clap::Parser;
 
-use crate::{app::handle_watch, cli::{Cli, Commands}, ipc::server::handle_request};
+use crate::{app::handle_watch, cli::{Cli, Commands}, core::{manager::{start_socket_listener, supervisor_loop}, state::{self, AppState}}, ipc::server::handle_request};
 
 mod cli;
 mod config;
@@ -12,41 +12,13 @@ mod exec;
 mod core;
 mod ipc;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // println!("Fleet Daemon started.");
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let state = Arc::new(AppState::default());
 
-    // // Charger l’état depuis ~/.fleetd/state.json (à venir)
-    // // Démarrer les watchers pour chaque projet enregistré
+    tokio::spawn(supervisor_loop(Arc::clone(&state), 30));
 
-    // // TODO: Écouter sur un socket (IPC) pour recevoir des ordres du CLI
-
-    // // TODO: Rafraîchir les projets régulièrement
-    // loop {
-    //     // stub: remplacer plus tard par boucle async avec tokio
-    //     std::thread::sleep(std::time::Duration::from_secs(60));
-    // }
-
-    let socket_path = "/tmp/fleetd.sock";
-    
-    if Path::new(socket_path).exists() {
-        fs::remove_file(socket_path)?;
-    }
-
-    let listener = UnixListener::bind(socket_path)?;
-    println!("fleetd is listening ...");
-
-    for stream in listener.incoming() {
-        match stream {
-            Ok(stream) => {
-                std::thread::spawn(move || {
-                    handle_request(stream).unwrap_or_else(|e| eprintln!("❌ Error: {:?}", e));
-                });
-            }
-            Err(e) => {
-                eprintln!("❌ Connexion failed: {:?}", e);
-            }
-        }
-    }
+    start_socket_listener(state).await?;
     
     Ok(())
 }

@@ -11,13 +11,15 @@ mod exec;
 mod ipc;
 
 
-fn main() {
+#[tokio::main]
+async fn main() -> Result<(), anyhow::Error> {
     let cli = Cli::parse();
 
     match cli.command {
         Commands::Watch { branch } => {
-            let _ = handle_watch(branch);
+            let _ = handle_watch(branch).await;
         }
         _ => {}
     }
+    Ok(())
 }

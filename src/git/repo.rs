@@ -1,11 +1,12 @@
 use git2::{Error, Repository};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Repo {
     pub branch: String,
     pub remote: String,
     pub last_commit: String,
+    pub name: String,
 }
 
 
@@ -27,10 +28,17 @@ impl Repo {
 
         let commit = head.peel_to_commit()?.id().to_string();
 
+        let name = remote.rsplit('/')
+            .next()
+            .and_then(|s| s.strip_suffix(".git").or(Some(s)))
+            .ok_or_else(|| Error::from_str("Failed to parse repo name from remote URL"))?
+            .to_string();
+
         Ok(Self {
             branch,
             remote,
             last_commit: commit,
+            name,
         })
     }
 }

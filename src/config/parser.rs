@@ -3,7 +3,7 @@ use std::{fs, path::Path};
 
 use anyhow::{Context, Ok, Result};
 use serde::Deserialize;
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default, Clone)]
 pub struct ProjectConfig {
     pub update: Vec<String>,
 

@@ -1,9 +1,9 @@
 use std::path::Path;
 
-use crate::{config::parser::load_config, core::watcher::WatchRequest, git::repo::Repo, ipc::{client::send_watch_request, server::DaemonRequest}};
+use crate::{config::parser::load_config, git::repo::Repo, ipc::{client::send_watch_request, server::DaemonRequest}};
 
 
-pub fn handle_watch(branch_cli: Option<String>) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn handle_watch(branch_cli: Option<String>) -> Result<(), Box<dyn std::error::Error>> {
     let config_path = Path::new("./fleet.yml");
     if !config_path.exists() {
         return Err("File `fleet.yml` missing from current directory.".into());
@@ -27,7 +27,7 @@ pub fn handle_watch(branch_cli: Option<String>) -> Result<(), Box<dyn std::error
         update_cmds: config.update.clone(),
     };
 
-    send_watch_request(watch_req)?;
+    send_watch_request(watch_req).await?;
 
     todo!()
 }
