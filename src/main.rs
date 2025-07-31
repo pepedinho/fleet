@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::cli::{Cli, Commands};
+use crate::{app::handle_watch, cli::{Cli, Commands}};
 
 mod cli;
 mod config;
@@ -12,7 +12,7 @@ fn main() {
 
     match cli.command {
         Commands::Watch { branch } => {
-            println!("watch repo on branch => {:?}", branch);
+            handle_watch(branch);
         }
         _ => {}
     }

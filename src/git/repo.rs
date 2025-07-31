@@ -2,7 +2,7 @@ use git2::{Error, Repository};
 
 pub struct Repo {
     pub branch: String,
-    pub remote: String
+    pub remote: String,
     pub last_commit: String,
 }
 
