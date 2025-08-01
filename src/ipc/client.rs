@@ -35,14 +35,14 @@ pub async fn send_watch_request(req: DaemonRequest) -> Result<(), anyhow::Error>
 
             // En-tête du tableau avec alignement par colonnes
             println!(
-                "{:<20} {:<12} {:<8} {:<40} {:<30}",
-                "Project ID", "Branch", "Commit", "Remote URL", "Project Dir"
+                "{:<40} {:<20} {:<12} {:<12} {:<40} {:<30}",
+                "Project ID", "Name", "Branch", "Commit", "Remote URL", "Project Dir"
             );
-            println!("{}", "-".repeat(115));
+            println!("{}", "-".repeat(150));
             for e in r {
                 println!(
-                    "{:<10} {:<20} {:<12} {:<8} {:<40} {:<30}",
-                    e.id, e.repo_name, e.branch, e.short_commit, e.short_url, e.project_dir
+                    "{:<40} {:<20} {:<12} {:<12} {:<40} {:<30}",
+                    e.id.to_string(), e.repo_name, e.branch, e.short_commit, e.short_url, e.project_dir
                 );
             }
         }
