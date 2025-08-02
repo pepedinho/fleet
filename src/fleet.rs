@@ -2,7 +2,7 @@ use clap::Parser;
 
 use crate::{
     app::handle_watch,
-    cli::{Cli, Commands},
+    cli::Cli,
 };
 
 mod app;
