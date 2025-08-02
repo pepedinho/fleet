@@ -1,4 +1,4 @@
-use git2::{Cred, Error, FetchOptions, Remote, RemoteCallbacks};
+use git2::{Cred, Error, Remote, RemoteCallbacks};
 
 pub fn get_remote_branch_hash(url: &str, branch: &str) -> Result<String, Error> {
     let mut callbacks = RemoteCallbacks::new();

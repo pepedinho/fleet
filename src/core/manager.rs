@@ -42,7 +42,7 @@ pub async fn start_socket_listener(state: Arc<AppState>) -> anyhow::Result<()> {
     println!("🔌 fleetd is listening on {:?}", sock_path);
 
     loop {
-        let (mut stream, _) = listener.accept().await?;
+        let (stream, _) = listener.accept().await?;
 
         let state = Arc::clone(&state);
         tokio::spawn(async move {
