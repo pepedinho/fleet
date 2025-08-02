@@ -1,7 +1,7 @@
 use std::{path::Path, sync::Arc, time::Duration};
 
 use tokio::{
-    io::{AsyncBufReadExt, AsyncReadExt, BufReader, split},
+    io::{AsyncBufReadExt, BufReader, split},
     net::UnixListener,
     time::interval,
 };

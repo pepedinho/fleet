@@ -13,7 +13,7 @@ pub async fn handle_watch(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
         return Err("File `fleet.yml` missing from current directory.".into());
     }
 
-    let config = load_config(&config_path)?;
+    let config = load_config(config_path)?;
     let repo = Repo::build()?;
 
     let watch_req = match &cli.command {

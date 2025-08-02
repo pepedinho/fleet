@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap};
 
 use tokio::sync::RwLock;
 use uuid::Uuid;
@@ -9,13 +9,3 @@ use crate::core::watcher::WatchContext;
 pub struct AppState {
     pub watches: RwLock<HashMap<Uuid, WatchContext>>,
 }
-
-pub type SharedState = Arc<AppState>;
-
-// impl AppState {
-//     pub fn default() -> Self {
-//         Self {
-//             watches: RwLock::new(HashMap::new()),
-//         }
-//     }
-// }

@@ -100,7 +100,7 @@ pub async fn handle_request(
                 let short_commit = if commit_hash.len() > 8 {
                     &commit_hash[..8]
                 } else {
-                    &commit_hash
+                    commit_hash
                 };
 
                 // Tronquer l'URL si trop longue (40 chars max)

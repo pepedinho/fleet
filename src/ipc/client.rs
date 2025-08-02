@@ -22,7 +22,7 @@ pub async fn send_watch_request(req: DaemonRequest) -> Result<(), anyhow::Error>
     reader.read_line(&mut response_line).await?;
     println!("finish to read !");
 
-    let response: DaemonResponse = serde_json::from_str(&response_line.trim())?;
+    let response: DaemonResponse = serde_json::from_str(response_line.trim())?;
 
     match response {
         DaemonResponse::Success(msg) => {
