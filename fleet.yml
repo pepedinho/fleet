@@ -1,6 +1,6 @@
 update:
-  - docker compose down
-  - docker compose up --build -d
+  - echo "oui je test"
+  - cargo b
 
 on_confliot:
   - echo "un conflit est survenu"

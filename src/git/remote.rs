@@ -1,43 +1,50 @@
-use git2::{Cred, FetchOptions, Remote, RemoteCallbacks};
+use git2::{Cred, Error, FetchOptions, Remote, RemoteCallbacks};
 
-pub fn get_remote_branch_hash(url: &str, branch: &str) -> Result<String, git2::Error> {
-    // On crée un repo temporaire en mémoire
-    // let mut remote = Remote::create_detached(url)?; 
-
-    // // On connecte pour lire les refs
-    // remote.connect(git2::Direction::Fetch)?;
-
-    // // On récupère toutes les références du serveur distant
-    // let refs = remote.list()?;
-
-    // // On cherche la branche désirée
-    // let ref_to_find = format!("refs/heads/{}", branch);
-    // for r in refs {
-    //     if r.name() == ref_to_find {
-    //         return Ok(r.oid().to_string());
-    //     }
-    // }
-
+pub fn get_remote_branch_hash(url: &str, branch: &str) -> Result<String, Error> {
     let mut callbacks = RemoteCallbacks::new();
-    callbacks.credentials(|_url, username_from_url, _allowed_type| {
-        Cred::ssh_key_from_agent(username_from_url.unwrap_or("git"))
-    });
 
-    // let mut fetch_options = FetchOptions::new();
-    // fetch_options.remote_callbacks(callbacks);
+    callbacks.credentials(|_url, username_from_url, allowed_types| {
+        let username = username_from_url.unwrap_or("git");
+        
+        // Try default key locations (~/.ssh/id_rsa)
+        if allowed_types.contains(git2::CredentialType::SSH_KEY) {
+            if let Ok(cred) = Cred::ssh_key(
+                username,
+                None,
+                std::path::Path::new(&format!("{}/.ssh/id_rsa", std::env::var("HOME").unwrap())),
+                None,
+            ) {
+                return Ok(cred);
+            }
+        }
+        // Try default credentials 
+        if allowed_types.contains(git2::CredentialType::DEFAULT) {
+            if let Ok(cred) = Cred::default() {
+                return Ok(cred);
+            }
+        }
+        
+        // Try ssh-agent 
+        if allowed_types.contains(git2::CredentialType::SSH_KEY) {
+            if let Ok(cred) = Cred::ssh_key_from_agent(username) {
+                return Ok(cred);
+            }
+        }
+        
+        Err(git2::Error::from_str("No authentication methods available"))
+    });
 
     let mut remote = Remote::create_detached(url)?;
     remote.connect_auth(git2::Direction::Fetch, Some(callbacks), None)?;
 
     let refs = remote.list()?;
-
     let ref_to_find = format!("refs/heads/{}", branch);
+
     for r in refs {
         if r.name() == ref_to_find {
             return Ok(r.oid().to_string());
         }
     }
 
-
-    Err(git2::Error::from_str(format!("Branch {} not found", branch).as_str()))
+    Err(git2::Error::from_str(&format!("Branch {} not found", branch)))
 }

@@ -1,6 +1,6 @@
 use anyhow::Ok;
 
-use crate::{config::parser::ProjectConfig, git::{remote::get_remote_branch_hash, repo::Repo}};
+use crate::{config::parser::ProjectConfig, exec::runner::run_update, git::{remote::get_remote_branch_hash, repo::Repo}};
 
 
 #[derive(Debug, Clone)]
@@ -16,7 +16,7 @@ pub fn watch_once(ctx: &WatchContext) -> Result<(), anyhow::Error> {
 
     if remote_hash != ctx.repo.last_commit {
         println!("new commit detected: {} -> {}", ctx.repo.last_commit, remote_hash);
-        // run_update(&ctx.config)?;
+        run_update(&ctx.config)?;
     }
     Ok(())
 }
