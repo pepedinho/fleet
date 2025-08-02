@@ -1,8 +1,15 @@
 use std::{path::Path, sync::Arc, time::Duration};
 
-use tokio::{io::{split, AsyncBufReadExt, AsyncReadExt, BufReader}, net::UnixListener, time::interval};
+use tokio::{
+    io::{AsyncBufReadExt, AsyncReadExt, BufReader, split},
+    net::UnixListener,
+    time::interval,
+};
 
-use crate::{core::{state::AppState, watcher::watch_once}, ipc::server::{handle_request, DaemonRequest}};
+use crate::{
+    core::{state::AppState, watcher::watch_once},
+    ipc::server::{DaemonRequest, handle_request},
+};
 
 pub async fn supervisor_loop(state: Arc<AppState>, interval_secs: u64) {
     let mut ticker = interval(Duration::from_secs(interval_secs));
@@ -26,7 +33,7 @@ pub async fn supervisor_loop(state: Arc<AppState>, interval_secs: u64) {
 
 pub async fn start_socket_listener(state: Arc<AppState>) -> anyhow::Result<()> {
     let sock_path = Path::new("/tmp/fleetd.sock");
-     if sock_path.exists() {
+    if sock_path.exists() {
         std::fs::remove_file(sock_path)?;
     }
 

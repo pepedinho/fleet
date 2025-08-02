@@ -1,26 +1,32 @@
 use std::sync::Arc;
 
-use crate::{config::parser::ProjectConfig, core::{state::AppState, watcher::WatchContext}, git::repo::Repo};
+use crate::{
+    config::parser::ProjectConfig,
+    core::{state::AppState, watcher::WatchContext},
+    git::repo::Repo,
+};
 use serde::{Deserialize, Serialize};
-use tokio::{io::{AsyncWriteExt, WriteHalf}, net::UnixStream};
+use tokio::{
+    io::{AsyncWriteExt, WriteHalf},
+    net::UnixStream,
+};
 use uuid::Uuid;
-
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "action")]
 pub enum DaemonRequest {
-    #[serde(rename ="add_watch")]
-    AddWatch { 
+    #[serde(rename = "add_watch")]
+    AddWatch {
         project_dir: String,
         branch: String,
         repo: Repo,
         update_cmds: Vec<String>,
     },
 
-    #[serde(rename ="stop_watch")]
-    StopWatch { id: Uuid},
+    #[serde(rename = "stop_watch")]
+    StopWatch { id: Uuid },
 
-    #[serde(rename ="list_watch")]
+    #[serde(rename = "list_watch")]
     ListWatches,
 }
 
@@ -34,17 +40,25 @@ pub struct WatchInfo {
     pub id: Uuid,
 }
 
-
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DaemonResponse {
     Success(String),
     Error(String),
-    ListWatches(Vec<WatchInfo>)
+    ListWatches(Vec<WatchInfo>),
 }
 
-pub async fn handle_request(req: DaemonRequest, state: Arc<AppState>,stream: &mut WriteHalf<UnixStream>) -> Result<(), anyhow::Error> {
+pub async fn handle_request(
+    req: DaemonRequest,
+    state: Arc<AppState>,
+    stream: &mut WriteHalf<UnixStream>,
+) -> Result<(), anyhow::Error> {
     let response = match req {
-        DaemonRequest::AddWatch { project_dir, branch, repo, update_cmds } => {
+        DaemonRequest::AddWatch {
+            project_dir,
+            branch,
+            repo,
+            update_cmds,
+        } => {
             let ctx = WatchContext {
                 branch,
                 repo,
@@ -72,7 +86,7 @@ pub async fn handle_request(req: DaemonRequest, state: Arc<AppState>,stream: &mu
 
         DaemonRequest::ListWatches => {
             let guard = state.watches.read().await;
-            let mut r : Vec<WatchInfo> = Vec::new();
+            let mut r: Vec<WatchInfo> = Vec::new();
 
             for (id, ctx) in guard.iter() {
                 // Extraction des infos depuis ctx.repo
@@ -96,13 +110,13 @@ pub async fn handle_request(req: DaemonRequest, state: Arc<AppState>,stream: &mu
                     remote_url.clone()
                 };
 
-                r.push(WatchInfo { 
+                r.push(WatchInfo {
                     branch: branch.to_string(),
-                    project_dir: project_dir.to_string(), 
-                    short_commit: short_commit.to_string(), 
-                    short_url, 
+                    project_dir: project_dir.to_string(),
+                    short_commit: short_commit.to_string(),
+                    short_url,
                     repo_name: repo_name.to_string(),
-                    id: *id
+                    id: *id,
                 });
             }
 
@@ -112,6 +126,6 @@ pub async fn handle_request(req: DaemonRequest, state: Arc<AppState>,stream: &mu
 
     let response_str = serde_json::to_string(&response)? + "\n";
     stream.write_all(response_str.as_bytes()).await?;
-    stream.flush().await?;  
+    stream.flush().await?;
     Ok(())
 }

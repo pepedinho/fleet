@@ -1,14 +1,16 @@
 use std::sync::Arc;
 
+use crate::core::{
+    manager::{start_socket_listener, supervisor_loop},
+    state::AppState,
+};
 
-use crate::core::{manager::{start_socket_listener, supervisor_loop}, state::AppState};
-
+mod app;
 mod cli;
 mod config;
-mod app;
-mod git;
-mod exec;
 mod core;
+mod exec;
+mod git;
 mod ipc;
 
 #[tokio::main]
@@ -18,6 +20,6 @@ async fn main() -> anyhow::Result<()> {
     tokio::spawn(supervisor_loop(Arc::clone(&state), 30));
 
     start_socket_listener(state).await?;
-    
+
     Ok(())
 }

@@ -28,6 +28,6 @@ pub enum Commands {
     },
 
     Rm {
-        id: String
+        id: String,
     },
 }

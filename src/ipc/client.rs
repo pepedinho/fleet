@@ -1,13 +1,14 @@
-use tokio::{io::{AsyncBufReadExt, AsyncWriteExt, BufReader}, net::UnixStream};
+use tokio::{
+    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
+    net::UnixStream,
+};
 
 use crate::ipc::server::{DaemonRequest, DaemonResponse};
-
-
 
 pub async fn send_watch_request(req: DaemonRequest) -> Result<(), anyhow::Error> {
     let mut stream = UnixStream::connect("/tmp/fleetd.sock").await?;
 
-    let json= serde_json::to_string(&req)? + "\n";
+    let json = serde_json::to_string(&req)? + "\n";
     println!("start to write");
     stream.write_all(json.as_bytes()).await?;
     stream.flush().await?;
@@ -42,7 +43,12 @@ pub async fn send_watch_request(req: DaemonRequest) -> Result<(), anyhow::Error>
             for e in r {
                 println!(
                     "{:<40} {:<20} {:<12} {:<12} {:<40} {:<30}",
-                    e.id.to_string(), e.repo_name, e.branch, e.short_commit, e.short_url, e.project_dir
+                    e.id.to_string(),
+                    e.repo_name,
+                    e.branch,
+                    e.short_commit,
+                    e.short_url,
+                    e.project_dir
                 );
             }
         }

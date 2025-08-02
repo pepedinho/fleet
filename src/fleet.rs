@@ -1,15 +1,17 @@
 use clap::Parser;
 
-use crate::{app::handle_watch, cli::{Cli, Commands}};
+use crate::{
+    app::handle_watch,
+    cli::{Cli, Commands},
+};
 
+mod app;
 mod cli;
 mod config;
-mod app;
-mod git;
 mod core;
 mod exec;
+mod git;
 mod ipc;
-
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
