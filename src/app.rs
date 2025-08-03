@@ -35,6 +35,16 @@ pub async fn handle_watch(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         Commands::Ps { all: _ } => DaemonRequest::ListWatches,
+        Commands::Logs { id_or_name } => {
+            match id_or_name {
+                Some(s) => {
+                    DaemonRequest::LogsWatches {id: s.to_string() }
+                },
+                None => {
+                    DaemonRequest::LogsWatches { id: repo.name }
+                }
+            }
+        }
         _ => {
             return Err("oui".into());
         }

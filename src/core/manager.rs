@@ -23,7 +23,7 @@ pub async fn supervisor_loop(state: Arc<AppState>, interval_secs: u64) {
         };
 
         for (id, ctx) in projects {
-            match watch_once(&ctx) {
+            match watch_once(&ctx).await {
                 Ok(_) => println!("[{}] ✔ OK", id),
                 Err(e) => eprintln!("[{}] ❌ Watch failed: {}", id, e),
             }

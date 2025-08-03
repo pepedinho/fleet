@@ -30,4 +30,8 @@ pub enum Commands {
     Rm {
         id: String,
     },
+
+    Logs {
+        id_or_name: Option<String>,
+    }
 }

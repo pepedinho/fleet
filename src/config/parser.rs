@@ -1,8 +1,8 @@
 use std::{fs, path::Path};
 
 use anyhow::{Context, Ok, Result};
-use serde::Deserialize;
-#[derive(Debug, Deserialize, Default, Clone)]
+use serde::{Deserialize, Serialize};
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct ProjectConfig {
     pub update: Vec<String>,
 
