@@ -1,9 +1,7 @@
-use std::{path::Path, sync::Arc, time::Duration};
+use std::{os::unix::fs::PermissionsExt, path::Path, sync::Arc, time::Duration};
 
 use tokio::{
-    io::{AsyncBufReadExt, BufReader, split},
-    net::UnixListener,
-    time::interval,
+    io::{split, AsyncBufReadExt, BufReader}, net::UnixListener, time::interval
 };
 
 use crate::{
@@ -38,6 +36,7 @@ pub async fn start_socket_listener(state: Arc<AppState>) -> anyhow::Result<()> {
     }
 
     let listener = UnixListener::bind(sock_path)?;
+    std::fs::set_permissions(sock_path, std::fs::Permissions::from_mode(0o666))?;
 
     println!("🔌 fleetd is listening on {:?}", sock_path);
 
