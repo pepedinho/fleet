@@ -19,19 +19,21 @@ pub async fn supervisor_loop(state: Arc<AppState>, interval_secs: u64) {
         //     let guard = state.watches.read().await;
         //     guard.clone()
         // };
-        let mut guard = state.watches.write().await;
         let mut dirty = false;
-
-        for (id, ctx) in guard.iter_mut() {
-            match watch_once(ctx).await {
-                Ok(true) => {
-                    println!("[{}] ✔ OK", id);
-                    dirty = true;
-                },
-                Ok(false) => {
-                    println!("[{}] ✔ No change", id);
+        
+        {
+            let mut guard = state.watches.write().await;
+            for (id, ctx) in guard.iter_mut() {
+                match watch_once(ctx).await {
+                    Ok(true) => {
+                        println!("[{}] ✔ OK", id);
+                        dirty = true;
+                    },
+                    Ok(false) => {
+                        println!("[{}] ✔ No change", id);
+                    }
+                    Err(e) => eprintln!("[{}] ❌ Watch failed: {}", id, e),
                 }
-                Err(e) => eprintln!("[{}] ❌ Watch failed: {}", id, e),
             }
         }
 
