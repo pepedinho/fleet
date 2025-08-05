@@ -15,8 +15,8 @@ mod ipc;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let state = Arc::new(AppState::default());
     init_watch_file().await?;
+    let state = Arc::new(AppState::load_from_disk().await?); // vide a chaque redemarage (probleme a resoudre)
     WatchContext::init_logs().await?;
 
     tokio::spawn(supervisor_loop(Arc::clone(&state), 30));

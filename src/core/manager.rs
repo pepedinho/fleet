@@ -15,15 +15,29 @@ pub async fn supervisor_loop(state: Arc<AppState>, interval_secs: u64) {
     loop {
         ticker.tick().await;
 
-        let projects = {
-            let guard = state.watches.read().await;
-            guard.clone()
-        };
+        // let projects = {
+        //     let guard = state.watches.read().await;
+        //     guard.clone()
+        // };
+        let mut guard = state.watches.write().await;
+        let mut dirty = false;
 
-        for (id, ctx) in projects {
-            match watch_once(&ctx).await {
-                Ok(_) => println!("[{}] ✔ OK", id),
+        for (id, ctx) in guard.iter_mut() {
+            match watch_once(ctx).await {
+                Ok(true) => {
+                    println!("[{}] ✔ OK", id);
+                    dirty = true;
+                },
+                Ok(false) => {
+                    println!("[{}] ✔ No change", id);
+                }
                 Err(e) => eprintln!("[{}] ❌ Watch failed: {}", id, e),
+            }
+        }
+
+        if dirty {
+            if let Err(e) = state.save_to_disk().await {
+                eprintln!("❌ Failed to save state: {}", e);
             }
         }
     }

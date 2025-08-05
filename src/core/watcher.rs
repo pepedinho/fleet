@@ -7,9 +7,7 @@ use tokio::fs;
 use uuid::Uuid;
 
 use crate::{
-    config::parser::ProjectConfig,
-    exec::runner::run_update,
-    git::{remote::get_remote_branch_hash, repo::Repo},
+    config::parser::ProjectConfig, core::state::{add_watch, save_watches}, exec::runner::run_update, git::{remote::get_remote_branch_hash, repo::Repo}
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,7 +49,7 @@ impl WatchContext {
     }
 }
 
-pub async fn watch_once(ctx: &WatchContext) -> Result<(), anyhow::Error> {
+pub async fn watch_once(ctx: &mut WatchContext) -> Result<bool, anyhow::Error> {
     let remote_hash = get_remote_branch_hash(&ctx.repo.remote, &ctx.branch)?;
 
     if remote_hash != ctx.repo.last_commit {
@@ -59,7 +57,9 @@ pub async fn watch_once(ctx: &WatchContext) -> Result<(), anyhow::Error> {
             "new commit detected: {} -> {}",
             ctx.repo.last_commit, remote_hash
         );
-        run_update(&ctx).await?;
+        run_update(ctx).await?;
+        ctx.repo.last_commit = String::from(remote_hash);
+        return Ok(true);
     }
-    Ok(())
+    Ok(false)
 }

@@ -12,6 +12,29 @@ pub struct AppState {
     pub watches: RwLock<HashMap<Uuid, WatchContext>>,
 }
 
+impl AppState {
+    pub async fn load_from_disk() -> Result<Self, anyhow::Error> {
+        let registry = load_watches().await?;
+        let watches: HashMap<Uuid, WatchContext> = registry
+            .projects
+            .into_iter()
+            .map(|ctx| (ctx.id, ctx))
+            .collect();
+
+        Ok(Self {
+            watches: RwLock::new(watches),
+        })
+    }
+
+    pub async fn save_to_disk(&self) -> Result<()> {
+        let guard = self.watches.read().await;
+        let registry = WatchRegistry {
+            projects: guard.values().cloned().collect(),
+        };
+        save_watches(&registry).await
+    } 
+}
+
 #[derive(Serialize, Deserialize, Clone, Default)]
 pub struct WatchRegistry {
     pub projects: Vec<WatchContext>,
@@ -26,9 +49,9 @@ pub fn get_watch_path() -> PathBuf {
 
 pub async fn init_watch_file() -> Result<()> {
     let path = get_watch_path();
-    println!("create watch file at: {}", path.to_str().unwrap());
     if !fs::try_exists(&path).await? {
         if let Some(parent) = path.parent() {
+            println!("create watch file at: {}", path.to_str().unwrap());
             fs::create_dir_all(parent).await?;
         }
         let empty = WatchRegistry::default();
@@ -54,7 +77,15 @@ pub async fn save_watches(watches: &WatchRegistry) -> Result<()> {
 
 pub async fn add_watch(ctx: &WatchContext) -> Result<()> {
     let mut watches = load_watches().await?;
-    watches.projects.push(ctx.clone());
+
+    if let Some(existing) = watches.projects.iter_mut()
+        .find(|p| p.project_dir == ctx.project_dir)
+    {
+        *existing = ctx.clone();
+    } else {
+        watches.projects.push(ctx.clone());
+    }
+
     save_watches(&watches).await?;
     Ok(())
 }
