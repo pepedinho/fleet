@@ -49,9 +49,9 @@ pub fn get_watch_path() -> PathBuf {
 
 pub async fn init_watch_file() -> Result<()> {
     let path = get_watch_path();
+    println!("watch file at: {}", path.to_str().unwrap());
     if !fs::try_exists(&path).await? {
         if let Some(parent) = path.parent() {
-            println!("create watch file at: {}", path.to_str().unwrap());
             fs::create_dir_all(parent).await?;
         }
         let empty = WatchRegistry::default();

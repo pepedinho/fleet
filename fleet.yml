@@ -1,6 +1,6 @@
 update:
   - echo "oui je test"
-  - cargo b
+  - cat
 
 on_confliot:
   - echo "un conflit est survenu"
