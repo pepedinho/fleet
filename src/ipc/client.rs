@@ -3,7 +3,7 @@ use tokio::{
     net::UnixStream,
 };
 
-use crate::ipc::server::{DaemonRequest, DaemonResponse};
+use crate::ipc::server::{DaemonRequest, DaemonResponse, WatchInfo};
 
 pub async fn send_watch_request(req: DaemonRequest) -> Result<(), anyhow::Error> {
     let mut stream = UnixStream::connect("/tmp/fleetd.sock")
@@ -14,13 +14,24 @@ pub async fn send_watch_request(req: DaemonRequest) -> Result<(), anyhow::Error>
     stream.write_all(json.as_bytes()).await?;
     stream.flush().await?;
 
+    let response = read_daemon_response(stream).await?;
+    handle_daemon_response(response);
+
+    Ok(())
+}
+
+/// Reads a single line response from the daemon and deserializes it into a [`DaemonResponse`].
+async fn read_daemon_response(stream: UnixStream) -> Result<DaemonResponse, anyhow::Error> {
     let mut reader = BufReader::new(stream);
     let mut response_line = String::new();
-
     reader.read_line(&mut response_line).await?;
+    let response = serde_json::from_str(response_line.trim())?;
+    Ok(response)
+}
 
-    let response: DaemonResponse = serde_json::from_str(response_line.trim())?;
-
+/// Processes the [`DaemonResponse`] by printing success, error,
+/// or listing watches in a formatted table.
+fn handle_daemon_response(response: DaemonResponse) {
     match response {
         DaemonResponse::Success(msg) => {
             println!("✅ {}", msg);
@@ -28,28 +39,31 @@ pub async fn send_watch_request(req: DaemonRequest) -> Result<(), anyhow::Error>
         DaemonResponse::Error(e) => {
             eprintln!("❌ Error: {}", e);
         }
-        DaemonResponse::ListWatches(r) => {
-            println!("📋 Currently watching {} project(s):\n", r.len());
-
-            // En-tête du tableau avec alignement par colonnes
-            println!(
-                "{:<15} {:<20} {:<12} {:<12} {:<40} {:<30}",
-                "Project ID", "Name", "Branch", "Commit", "Remote URL", "Project Dir"
-            );
-            println!("{}", "-".repeat(130));
-            for e in r {
-                println!(
-                    "{:<15} {:<20} {:<12} {:<12} {:<40} {:<30}",
-                    e.id.to_string(),
-                    e.repo_name,
-                    e.branch,
-                    e.short_commit,
-                    e.short_url,
-                    e.project_dir
-                );
-            }
+        DaemonResponse::ListWatches(watches) => {
+            print_watches_table(&watches);
         }
     }
+}
 
-    Ok(())
+/// Prints a formatted table of active watches.
+fn print_watches_table(watches: &[WatchInfo]) {
+    println!("📋 Currently watching {} project(s):\n", watches.len());
+
+    println!(
+        "{:<15} {:<20} {:<12} {:<12} {:<40} {:<30}",
+        "Project ID", "Name", "Branch", "Commit", "Remote URL", "Project Dir"
+    );
+    println!("{}", "-".repeat(130));
+
+    for w in watches {
+        println!(
+            "{:<15} {:<20} {:<12} {:<12} {:<40} {:<30}",
+            w.id.to_string(),
+            w.repo_name,
+            w.branch,
+            w.short_commit,
+            w.short_url,
+            w.project_dir
+        );
+    }
 }
