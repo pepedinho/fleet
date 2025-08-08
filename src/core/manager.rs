@@ -20,22 +20,23 @@ pub async fn supervisor_loop(state: Arc<AppState>, interval_secs: u64) {
         // };
         let mut dirty = false;
         let mut to_update= Vec::new();
-        let guard = state.watches.read().await;
-        
-        for (id, ctx) in guard.iter() {
-            match watch_once(ctx).await {
-                Ok(Some(new_commit)) => {
-                    println!("[{}] ✔ OK", id);
-                    to_update.push((id.clone(), new_commit));
-                },
-                Ok(None) => {
-                    println!("[{}] ✔ No change", id);
-                }
-                Err(e) => eprintln!("[{}] ❌ Watch failed: {}", id, e),
-            }
-        }
+        {
 
-        drop(guard);
+            let guard = state.watches.read().await;
+            
+            for (id, ctx) in guard.iter() {
+                match watch_once(ctx).await {
+                    Ok(Some(new_commit)) => {
+                        println!("[{}] ✔ OK", id);
+                        to_update.push((id.clone(), new_commit));
+                    },
+                    Ok(None) => {
+                        println!("[{}] ✔ No change", id);
+                    }
+                    Err(e) => eprintln!("[{}] ❌ Watch failed: {}", id, e),
+                }
+            }
+        } // guard drop here
 
         for (id, new_commit) in to_update {
             {
