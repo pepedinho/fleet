@@ -1,4 +1,5 @@
-use std::{path::PathBuf, str::FromStr, sync::Arc};
+#![allow(dead_code)]
+use std::sync::Arc;
 
 use crate::{
     config::parser::{ProjectConfig, UpdateCommand},
@@ -167,8 +168,8 @@ pub async fn handle_request(
         }
         DaemonRequest::LogsWatches { id } => {
             let id = match get_name_by_id(&id).await {
-                Ok(_name) => id,
-                Err(_) => match get_id_by_name(&id).await? {
+                Ok(Some(_name)) => id,
+                Err(_) | Ok(None) => match get_id_by_name(&id).await? {
                     Some(uuid) => uuid,
                     None => {
                         return send_error_response(stream, "❌ No repo with this name exists")
