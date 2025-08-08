@@ -1,11 +1,16 @@
+#![allow(dead_code)]
 use std::{os::unix::fs::PermissionsExt, path::Path, sync::Arc, time::Duration};
 
 use tokio::{
-    io::{split, AsyncBufReadExt, BufReader}, net::UnixListener, time::interval
+    io::{AsyncBufReadExt, BufReader, split},
+    net::UnixListener,
+    time::interval,
 };
 
 use crate::{
-    core::{state::AppState, watcher::watch_once}, exec::runner::run_update, ipc::server::{handle_request, DaemonRequest}
+    core::{state::AppState, watcher::watch_once},
+    exec::runner::run_update,
+    ipc::server::{DaemonRequest, handle_request},
 };
 
 pub async fn supervisor_loop(state: Arc<AppState>, interval_secs: u64) {
@@ -19,17 +24,16 @@ pub async fn supervisor_loop(state: Arc<AppState>, interval_secs: u64) {
         //     guard.clone()
         // };
         let mut dirty = false;
-        let mut to_update= Vec::new();
+        let mut to_update = Vec::new();
         {
-
             let guard = state.watches.read().await;
-            
+
             for (id, ctx) in guard.iter() {
                 match watch_once(ctx).await {
                     Ok(Some(new_commit)) => {
                         println!("[{}] ✔ OK", id);
                         to_update.push((id.clone(), new_commit));
-                    },
+                    }
                     Ok(None) => {
                         println!("[{}] ✔ No change", id);
                     }

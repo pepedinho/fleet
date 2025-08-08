@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::path::PathBuf;
 
 use anyhow::{Ok, Result};
