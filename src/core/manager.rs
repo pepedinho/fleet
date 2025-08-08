@@ -1,11 +1,19 @@
+#![allow(dead_code)]
 use std::{os::unix::fs::PermissionsExt, path::Path, sync::Arc, time::Duration};
 
 use tokio::{
-    io::{split, AsyncBufReadExt, BufReader}, net::UnixListener, time::interval
+    io::{AsyncBufReadExt, BufReader, split},
+    net::UnixListener,
+    time::interval,
 };
 
 use crate::{
-    core::{state::AppState, watcher::watch_once}, exec::runner::run_update, ipc::server::{handle_request, DaemonRequest}
+    core::{
+        state::AppState,
+        watcher::{WatchContext, watch_once},
+    },
+    exec::runner::run_update,
+    ipc::server::{DaemonRequest, handle_request},
 };
 
 pub async fn supervisor_loop(state: Arc<AppState>, interval_secs: u64) {
@@ -14,56 +22,60 @@ pub async fn supervisor_loop(state: Arc<AppState>, interval_secs: u64) {
     loop {
         ticker.tick().await;
 
-        // let projects = {
-        //     let guard = state.watches.read().await;
-        //     guard.clone()
-        // };
+        let to_update = collect_updates(&state).await;
         let mut dirty = false;
-        let mut to_update= Vec::new();
-        {
-
-            let guard = state.watches.read().await;
-            
-            for (id, ctx) in guard.iter() {
-                match watch_once(ctx).await {
-                    Ok(Some(new_commit)) => {
-                        println!("[{}] ✔ OK", id);
-                        to_update.push((id.clone(), new_commit));
-                    },
-                    Ok(None) => {
-                        println!("[{}] ✔ No change", id);
-                    }
-                    Err(e) => eprintln!("[{}] ❌ Watch failed: {}", id, e),
-                }
-            }
-        } // guard drop here
 
         for (id, new_commit) in to_update {
-            {
-                let mut watches_write = state.watches.write().await;
-                if let Some(ctx) = watches_write.get_mut(&id) {
-                    ctx.repo.last_commit = new_commit.clone();
-                }
-            } // drop lock here
-
-            if let Some(ctx) = {
-                let watches_read = state.watches.read().await;
-                watches_read.get(&id).cloned()
-            } {
-                if let Err(e) = run_update(&ctx).await {
-                    eprintln!("[{}] ❌ Update failed: {}", id, e);
-                } else {
+            update_commit(&state, &id, new_commit.clone()).await;
+            if let Some(ctx) = get_watch_ctx(&state, &id).await {
+                if run_update(&ctx).await.is_ok() {
                     println!("[{}] ✅ Update succeeded", id);
                     dirty = true;
+                } else {
+                    eprintln!("[{}] ❌ Update failed", id);
                 }
             }
         }
+
         if dirty {
             if let Err(e) = state.save_to_disk().await {
                 eprintln!("❌ Failed to save state: {}", e);
             }
         }
     }
+}
+
+/// Loop through the watches, call `watch_once` on each one,
+/// return the (id, new_commit) to update.
+async fn collect_updates(state: &Arc<AppState>) -> Vec<(String, String)> {
+    let mut to_update = Vec::new();
+    let guard = state.watches.read().await;
+
+    for (id, ctx) in guard.iter() {
+        match watch_once(ctx).await {
+            Ok(Some(new_commit)) => {
+                println!("[{}] ✔ OK", id);
+                to_update.push((id.clone(), new_commit));
+            }
+            Ok(None) => println!("[{}] ✔ No change", id),
+            Err(e) => eprintln!("[{}] ❌ Watch failed: {}", id, e),
+        }
+    }
+
+    to_update
+}
+
+/// Updates the commit stored in the state for a given watch.
+async fn update_commit(state: &Arc<AppState>, id: &str, new_commit: String) {
+    let mut watches_write = state.watches.write().await;
+    if let Some(ctx) = watches_write.get_mut(id) {
+        ctx.repo.last_commit = new_commit;
+    }
+}
+
+async fn get_watch_ctx(state: &Arc<AppState>, id: &str) -> Option<WatchContext> {
+    let watches_read = state.watches.read().await;
+    watches_read.get(id).cloned()
 }
 
 pub async fn start_socket_listener(state: Arc<AppState>) -> anyhow::Result<()> {

@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use dirs::home_dir;
 use git2::{Cred, Error, Remote, RemoteCallbacks};
 
@@ -13,12 +14,7 @@ pub fn get_remote_branch_hash(url: &str, branch: &str) -> Result<String, Error> 
 
         // Try default key locations (~/.ssh/id_rsa)
         if allowed_types.contains(git2::CredentialType::SSH_KEY) {
-            if let Ok(cred) = Cred::ssh_key(
-                username,
-                None,
-                &ssh_key_path,
-                None,
-            ) {
+            if let Ok(cred) = Cred::ssh_key(username, None, &ssh_key_path, None) {
                 return Ok(cred);
             }
         }
