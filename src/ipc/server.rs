@@ -157,7 +157,6 @@ pub async fn handle_request(
             DaemonResponse::ListWatches(r)
         }
         DaemonRequest::LogsWatches {id} => {
-            //TODO: fetch the coresponding logs and send it
             let id = match Uuid::from_str(&id) {
                 Ok(i) => i,
                 Err(_) => {

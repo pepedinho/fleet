@@ -1,18 +1,18 @@
 
-use tokio::{fs::OpenOptions, io::AsyncWriteExt, process::Command};
+use std::process::Stdio;
+
+use anyhow::Result;
+use tokio::{fs::OpenOptions, io::{AsyncBufReadExt, AsyncWriteExt, BufReader}, process::Command, task::JoinHandle};
 
 use crate::{core::watcher::WatchContext, ipc::server::get_log_file};
 
 pub async fn run_update(ctx: &WatchContext) -> Result<(), anyhow::Error> {
     let mut log_file = get_log_file(&ctx).await?;
 
-    // En-tête de log
     let now = chrono::Local::now();
     log_file
         .write_all(format!("\n--- [{}] Update started ---\n", now).as_bytes())
         .await?;
-
-    // Log du début
     log_file.write_all(format!("▶ Update project...\n").as_bytes()).await?;
 
     for (i, command_line) in ctx.config.update.iter().enumerate() {
@@ -32,29 +32,60 @@ pub async fn run_update(ctx: &WatchContext) -> Result<(), anyhow::Error> {
         let program = &parts[0];
         let args = &parts[1..];
 
-        let output = Command::new(program)
+        let mut child = Command::new(program)
             .args(args)
             .current_dir(&ctx.project_dir)
-            .output()
-            .await?;
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|e| anyhow::anyhow!("Error running command: '{}': {}", command_line, e))?;
 
-        log_file
-            .write_all(format!("🔧 Command stdout:\n{}\n", String::from_utf8_lossy(&output.stdout)).as_bytes())
-            .await?;
+        let stdout = child.stdout.take().unwrap();
+        let stderr = child.stderr.take().unwrap();
 
-        log_file
-            .write_all(format!("🧨 Command stderr:\n{}\n", String::from_utf8_lossy(&output.stderr)).as_bytes())
-            .await?;
+        let mut log_out = log_file.try_clone().await?;
+        let mut log_err = log_file.try_clone().await?;
 
-        if !output.status.success() {
+        let handle_stdout: JoinHandle<Result<()>> = tokio::spawn(async move {
+            let reader = BufReader::new(stdout);
+            let mut lines = reader.lines();
+            while let Some(line) = lines.next_line().await? {
+                log_out
+                    .write_all(format!("🔧 {}\n", line).as_bytes())
+                    .await?;
+            }
+            Ok(())
+        });
+
+        let handle_stderr: JoinHandle<Result<()>> = tokio::spawn(async move {
+            let reader = BufReader::new(stderr);
+            let mut lines = reader.lines();
+            while let Some(line) = lines.next_line().await? {
+                log_err
+                    .write_all(format!("🧨 {}\n", line).as_bytes())
+                    .await?;
+            }
+            Ok(())
+        });
+
+        let status = child.wait().await?;
+        handle_stdout.await??;
+        handle_stderr.await??;
+
+        if !status.success() {
             log_file
-                .write_all(format!("❌ Command failed with code: {:?}\n", output.status.code()).as_bytes())
+                .write_all(
+                    format!(
+                        "❌ Command failed with exit code : {:?}\n",
+                        status.code()
+                    )
+                    .as_bytes(),
+                )
                 .await?;
-
             return Err(anyhow::anyhow!(
-                "Command '{}' failed with exit code: {:?}",
+                "Command '{}' failed with the exit code : {:?}",
                 command_line,
-                output.status.code().unwrap_or(-1)
+                status.code()
             ));
         }
 

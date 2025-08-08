@@ -1,6 +1,6 @@
 update:
   - echo "oui je test"
-  - cat
+  - ping google.com
 
 on_confliot:
   - echo "un conflit est survenu"

@@ -49,7 +49,7 @@ impl WatchContext {
     }
 }
 
-pub async fn watch_once(ctx: &mut WatchContext) -> Result<bool, anyhow::Error> {
+pub async fn watch_once(ctx: &WatchContext) -> Result<Option<String>, anyhow::Error> {
     let remote_hash = get_remote_branch_hash(&ctx.repo.remote, &ctx.branch)?;
 
     if remote_hash != ctx.repo.last_commit {
@@ -57,9 +57,9 @@ pub async fn watch_once(ctx: &mut WatchContext) -> Result<bool, anyhow::Error> {
             "new commit detected: {} -> {}",
             ctx.repo.last_commit, remote_hash
         );
-        run_update(ctx).await?;
-        ctx.repo.last_commit = String::from(remote_hash);
-        return Ok(true);
+        // run_update(ctx).await?;
+        // ctx.repo.last_commit = String::from(remote_hash);
+        return Ok(Some(remote_hash));
     }
-    Ok(false)
+    Ok(None)
 }
