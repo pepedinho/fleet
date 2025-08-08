@@ -23,7 +23,7 @@ pub struct ProjectConfig {
     #[serde(default)]
     pub branch: Option<String>,
 
-    pub timeout_secs: Option<u64>,
+    pub timeout: Option<u64>,
 }
 
 pub fn load_config(path: &Path) -> Result<ProjectConfig> {

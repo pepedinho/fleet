@@ -1,15 +1,12 @@
-use std::{any::Any, path::PathBuf};
+use std::path::PathBuf;
 
 use anyhow::{Ok, Result};
 use dirs::home_dir;
 use serde::{Deserialize, Serialize};
 use tokio::fs;
-use uuid::Uuid;
 
 use crate::{
     config::parser::ProjectConfig,
-    core::state::{add_watch, save_watches},
-    exec::runner::run_update,
     git::{remote::get_remote_branch_hash, repo::Repo},
 };
 
@@ -19,7 +16,7 @@ pub struct WatchContext {
     pub repo: Repo,
     pub config: ProjectConfig,
     pub project_dir: String,
-    pub id: Uuid,
+    pub id: String,
 }
 
 impl WatchContext {
@@ -30,7 +27,7 @@ impl WatchContext {
         log_dir.join(self.id.to_string() + ".log")
     }
 
-    pub fn log_path_by_id(id: Uuid) -> PathBuf {
+    pub fn log_path_by_id(id: &str) -> PathBuf {
         let home = home_dir().unwrap();
 
         let log_dir = home.join(".fleet").join("logs");
