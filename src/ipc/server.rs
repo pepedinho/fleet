@@ -1,13 +1,18 @@
-use std::sync::Arc;
+use std::{path::PathBuf, str::FromStr, sync::Arc};
 
 use crate::{
-    config::parser::ProjectConfig,
-    core::{state::AppState, watcher::WatchContext},
+    config::parser::{ProjectConfig, UpdateCommand},
+    core::{
+        state::{AppState, add_watch, get_id_by_name},
+        watcher::WatchContext,
+    },
     git::repo::Repo,
 };
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use tokio::{
-    io::{AsyncWriteExt, WriteHalf},
+    fs::{File, OpenOptions},
+    io::{AsyncReadExt, AsyncWriteExt, BufReader, WriteHalf},
     net::UnixStream,
 };
 use uuid::Uuid;
@@ -20,7 +25,7 @@ pub enum DaemonRequest {
         project_dir: String,
         branch: String,
         repo: Repo,
-        update_cmds: Vec<String>,
+        update_cmds: Vec<UpdateCommand>,
     },
 
     #[serde(rename = "stop_watch")]
@@ -28,6 +33,9 @@ pub enum DaemonRequest {
 
     #[serde(rename = "list_watch")]
     ListWatches,
+
+    #[serde(rename = "logs_watch")]
+    LogsWatches { id: String },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -47,11 +55,44 @@ pub enum DaemonResponse {
     ListWatches(Vec<WatchInfo>),
 }
 
+pub async fn get_log_file(ctx: &WatchContext) -> Result<File> {
+    let log_path = ctx.log_path();
+    println!("log path => {}", log_path.to_str().unwrap());
+    let log_file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_path)
+        .await?;
+    Ok(log_file)
+}
+
+async fn get_logs_by_id(id: Uuid) -> Result<String> {
+    let log_path = WatchContext::log_path_by_id(id);
+
+    let file = File::open(&log_path).await?;
+    let mut reader = BufReader::new(file);
+    let mut contents = String::new();
+    reader.read_to_string(&mut contents).await?;
+    Ok(contents)
+}
+
+async fn send_error_response(
+    stream: &mut WriteHalf<UnixStream>,
+    message: &str,
+) -> Result<(), anyhow::Error> {
+    let response = DaemonResponse::Error(message.to_string());
+    let response_str = serde_json::to_string(&response)? + "\n";
+    stream.write_all(response_str.as_bytes()).await?;
+    stream.flush().await?;
+    Ok(())
+}
+
 pub async fn handle_request(
     req: DaemonRequest,
     state: Arc<AppState>,
     stream: &mut WriteHalf<UnixStream>,
 ) -> Result<(), anyhow::Error> {
+    println!("treat the request");
     let response = match req {
         DaemonRequest::AddWatch {
             project_dir,
@@ -59,6 +100,7 @@ pub async fn handle_request(
             repo,
             update_cmds,
         } => {
+            let id = Uuid::new_v4();
             let ctx = WatchContext {
                 branch,
                 repo,
@@ -67,12 +109,15 @@ pub async fn handle_request(
                     ..Default::default()
                 },
                 project_dir,
+                id,
             };
-
+            let mut log_file = get_log_file(&ctx).await?;
             let mut guard = state.watches.write().await;
-            let id = Uuid::new_v4();
+            add_watch(&ctx).await?;
             guard.insert(id, ctx);
-            println!("📌 Project registered with ID: {}", id);
+            log_file
+                .write_all(format!("📌 Project registered with ID: {}", id).as_bytes())
+                .await?;
             DaemonResponse::Success(format!("📌 Project registered with ID: {}", id))
         }
         DaemonRequest::StopWatch { id } => {
@@ -90,20 +135,18 @@ pub async fn handle_request(
 
             for (id, ctx) in guard.iter() {
                 // Extraction des infos depuis ctx.repo
-                let repo_name = &ctx.repo.name; // nom du repo
+                let repo_name = &ctx.repo.name;
                 let branch = &ctx.repo.branch;
                 let commit_hash = &ctx.repo.last_commit;
                 let remote_url = &ctx.repo.remote;
                 let project_dir = &ctx.project_dir;
 
-                // Tronquer le commit hash à 8 caractères (comme git)
                 let short_commit = if commit_hash.len() > 8 {
                     &commit_hash[..8]
                 } else {
                     commit_hash
                 };
 
-                // Tronquer l'URL si trop longue (40 chars max)
                 let short_url = if remote_url.len() > 40 {
                     format!("{}...", &remote_url[..37])
                 } else {
@@ -121,6 +164,29 @@ pub async fn handle_request(
             }
 
             DaemonResponse::ListWatches(r)
+        }
+        DaemonRequest::LogsWatches { id } => {
+            let id = match Uuid::from_str(&id) {
+                Ok(i) => i,
+                Err(_) => match get_id_by_name(&id).await? {
+                    Some(uuid) => uuid,
+                    None => {
+                        return send_error_response(stream, "❌ No repo with this name exists")
+                            .await;
+                    }
+                },
+            };
+
+            match get_logs_by_id(id).await {
+                Ok(logs) => DaemonResponse::Success(logs),
+                Err(e) => {
+                    return send_error_response(
+                        stream,
+                        &format!("❌ Failed to read logs for ID {}: {}", id, e),
+                    )
+                    .await;
+                }
+            }
         }
     };
 

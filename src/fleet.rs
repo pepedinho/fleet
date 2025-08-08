@@ -12,12 +12,13 @@ mod core;
 mod exec;
 mod git;
 mod ipc;
+mod logging;
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     let cli = Cli::parse();
 
-    let _ = handle_watch(&cli).await;
+    handle_watch(&cli).await?;
     // match cli.command {
     //     Commands::Watch { branch } => {
     //         let _ = handle_watch(branch).await;

@@ -1,3 +1,4 @@
+use dirs::home_dir;
 use git2::{Cred, Error, Remote, RemoteCallbacks};
 
 pub fn get_remote_branch_hash(url: &str, branch: &str) -> Result<String, Error> {
@@ -5,13 +6,17 @@ pub fn get_remote_branch_hash(url: &str, branch: &str) -> Result<String, Error> 
 
     callbacks.credentials(|_url, username_from_url, allowed_types| {
         let username = username_from_url.unwrap_or("git");
+        let ssh_key_path = home_dir()
+            .map(|h| h.join(".ssh/id_rsa"))
+            .expect("Failed to find HOME directory");
+        println!("find ssh in key => {}", ssh_key_path.display());
 
         // Try default key locations (~/.ssh/id_rsa)
         if allowed_types.contains(git2::CredentialType::SSH_KEY) {
             if let Ok(cred) = Cred::ssh_key(
                 username,
                 None,
-                std::path::Path::new(&format!("{}/.ssh/id_rsa", std::env::var("HOME").unwrap())),
+                &ssh_key_path,
                 None,
             ) {
                 return Ok(cred);
