@@ -18,12 +18,9 @@ serde_yaml = "0.9"
 serde_json = "1.0"
 git2 = "0.18"
 tokio = { version = "1", features = ["full"] }
-tracing = "0.1"
-tracing-subscriber = "0.3"
-tempfile = "3.10"
 rand = "0.8"
 anyhow = "1.0"
 shell-words = "1.1"
-uuid = {version = "1.17.0", features = ["serde", "v4"] }
 chrono = "0.4"
 dirs = "6.0.0"
+hex = "0.4"

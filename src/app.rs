@@ -10,18 +10,17 @@ use crate::{
 };
 
 pub async fn handle_watch(cli: &Cli) -> Result<()> {
-    let config_path = Path::new("./fleet.yml");
-    if !config_path.exists() {
-        return Err(anyhow::anyhow!(
-            "File `fleet.yml` missing from current directory."
-        ))?;
-    }
-
-    let config = load_config(config_path)?;
     let repo = Repo::build()?;
 
     let watch_req = match &cli.command {
         Commands::Watch { branch: branch_cli } => {
+            let config_path = Path::new("./fleet.yml");
+            if !config_path.exists() {
+                return Err(anyhow::anyhow!(
+                    "File `fleet.yml` missing from current directory."
+                ))?;
+            }
+            let config = load_config(config_path)?;
             let branch = branch_cli
                 .clone()
                 .or(config.branch.clone())

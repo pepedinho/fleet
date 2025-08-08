@@ -3,7 +3,8 @@ use std::{path::PathBuf, str::FromStr, sync::Arc};
 use crate::{
     config::parser::{ProjectConfig, UpdateCommand},
     core::{
-        state::{AppState, add_watch, get_id_by_name},
+        id::short_id,
+        state::{AppState, add_watch, get_id_by_name, get_name_by_id},
         watcher::WatchContext,
     },
     git::repo::Repo,
@@ -15,7 +16,6 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt, BufReader, WriteHalf},
     net::UnixStream,
 };
-use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "action")]
@@ -29,7 +29,7 @@ pub enum DaemonRequest {
     },
 
     #[serde(rename = "stop_watch")]
-    StopWatch { id: Uuid },
+    StopWatch { id: String },
 
     #[serde(rename = "list_watch")]
     ListWatches,
@@ -45,7 +45,7 @@ pub struct WatchInfo {
     pub short_commit: String,
     pub short_url: String,
     pub repo_name: String,
-    pub id: Uuid,
+    pub id: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -66,7 +66,7 @@ pub async fn get_log_file(ctx: &WatchContext) -> Result<File> {
     Ok(log_file)
 }
 
-async fn get_logs_by_id(id: Uuid) -> Result<String> {
+async fn get_logs_by_id(id: &str) -> Result<String> {
     let log_path = WatchContext::log_path_by_id(id);
 
     let file = File::open(&log_path).await?;
@@ -100,7 +100,7 @@ pub async fn handle_request(
             repo,
             update_cmds,
         } => {
-            let id = Uuid::new_v4();
+            let id = short_id();
             let ctx = WatchContext {
                 branch,
                 repo,
@@ -109,14 +109,14 @@ pub async fn handle_request(
                     ..Default::default()
                 },
                 project_dir,
-                id,
+                id: id.clone(),
             };
             let mut log_file = get_log_file(&ctx).await?;
             let mut guard = state.watches.write().await;
             add_watch(&ctx).await?;
-            guard.insert(id, ctx);
+            guard.insert(id.clone(), ctx);
             log_file
-                .write_all(format!("📌 Project registered with ID: {}", id).as_bytes())
+                .write_all(format!("📌 Project registered with ID: {}", &id).as_bytes())
                 .await?;
             DaemonResponse::Success(format!("📌 Project registered with ID: {}", id))
         }
@@ -159,15 +159,15 @@ pub async fn handle_request(
                     short_commit: short_commit.to_string(),
                     short_url,
                     repo_name: repo_name.to_string(),
-                    id: *id,
+                    id: String::from(id),
                 });
             }
 
             DaemonResponse::ListWatches(r)
         }
         DaemonRequest::LogsWatches { id } => {
-            let id = match Uuid::from_str(&id) {
-                Ok(i) => i,
+            let id = match get_name_by_id(&id).await {
+                Ok(_name) => id,
                 Err(_) => match get_id_by_name(&id).await? {
                     Some(uuid) => uuid,
                     None => {
@@ -177,7 +177,7 @@ pub async fn handle_request(
                 },
             };
 
-            match get_logs_by_id(id).await {
+            match get_logs_by_id(&id).await {
                 Ok(logs) => DaemonResponse::Success(logs),
                 Err(e) => {
                     return send_error_response(
