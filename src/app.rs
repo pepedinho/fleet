@@ -1,6 +1,7 @@
+#![allow(dead_code)]
 use std::path::Path;
 
-use anyhow::Result;
+use anyhow::{Ok, Result};
 
 use crate::{
     cli::{Cli, Commands},
@@ -9,44 +10,52 @@ use crate::{
     ipc::{client::send_watch_request, server::DaemonRequest},
 };
 
+/// Handles watch-related CLI commands by delegating to subfunctions
+/// that build the appropriate [`DaemonRequest`].
 pub async fn handle_watch(cli: &Cli) -> Result<()> {
     let repo = Repo::build()?;
 
-    let watch_req = match &cli.command {
-        Commands::Watch { branch: branch_cli } => {
-            let config_path = Path::new("./fleet.yml");
-            if !config_path.exists() {
-                return Err(anyhow::anyhow!(
-                    "File `fleet.yml` missing from current directory."
-                ))?;
-            }
-            let config = load_config(config_path)?;
-            let branch = branch_cli
-                .clone()
-                .or(config.branch.clone())
-                .unwrap_or(repo.branch.clone());
-
-            println!("Branche sélectionnée : {}", branch);
-            println!("Remote : {}", &repo.remote);
-            println!("Dernier commit local : {}", &repo.last_commit);
-
-            DaemonRequest::AddWatch {
-                project_dir: std::env::current_dir()?.to_string_lossy().into_owned(),
-                branch,
-                repo,
-                update_cmds: config.update.clone(),
-            }
-        }
-        Commands::Ps { all: _ } => DaemonRequest::ListWatches,
-        Commands::Logs { id_or_name } => match id_or_name {
-            Some(s) => DaemonRequest::LogsWatches { id: s.to_string() },
-            None => DaemonRequest::LogsWatches { id: repo.name },
-        },
-        _ => {
-            return Err(anyhow::anyhow!("oui"))?;
-        }
-    };
-
+    let watch_req = build_watch_request(cli, repo)?;
     send_watch_request(watch_req).await?;
     Ok(())
+}
+
+/// Builds the appropriate [`DaemonRequest`] for the given CLI command.
+fn build_watch_request(cli: &Cli, repo: Repo) -> Result<DaemonRequest> {
+    match &cli.command {
+        Commands::Watch { branch } => build_add_watch_request(branch.clone(), repo),
+        Commands::Ps { .. } => Ok(DaemonRequest::ListWatches),
+        Commands::Logs { id_or_name } => Ok(build_logs_request(id_or_name, repo)),
+        _ => Err(anyhow::anyhow!("Unsuported command")),
+    }
+}
+
+/// Builds an [`AddWatch`] request after validating configuration.
+fn build_add_watch_request(branch_cli: Option<String>, repo: Repo) -> Result<DaemonRequest> {
+    let config_path = Path::new("./fleet.yml");
+    if !config_path.exists() {
+        return Err(anyhow::anyhow!(
+            "File `fleet.yml` missing from current directory."
+        ));
+    }
+
+    let config = load_config(config_path)?;
+    let branch = branch_cli
+        .or(config.branch.clone())
+        .unwrap_or(repo.branch.clone());
+
+    Ok(DaemonRequest::AddWatch {
+        project_dir: std::env::current_dir()?.to_string_lossy().into_owned(),
+        branch,
+        repo,
+        update_cmds: config.update.clone(),
+    })
+}
+
+/// Builds a [`LogsWatches`] request from CLI or repository defaults.
+fn build_logs_request(id_or_name: &Option<String>, repo: Repo) -> DaemonRequest {
+    match id_or_name {
+        Some(s) => DaemonRequest::LogsWatches { id: s.to_string() },
+        None => DaemonRequest::LogsWatches { id: repo.name },
+    }
 }
