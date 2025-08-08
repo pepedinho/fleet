@@ -2,9 +2,17 @@ use std::{fs, path::Path};
 
 use anyhow::{Context, Ok, Result};
 use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UpdateCommand {
+    pub cmd: String,
+    #[serde(default)]
+    pub blocking: bool,
+}
+
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct ProjectConfig {
-    pub update: Vec<String>,
+    pub update: Vec<UpdateCommand>,
 
     #[serde(default)]
     pub on_conflict: Vec<String>,
@@ -14,6 +22,8 @@ pub struct ProjectConfig {
 
     #[serde(default)]
     pub branch: Option<String>,
+
+    pub timeout_secs: Option<u64>,
 }
 
 pub fn load_config(path: &Path) -> Result<ProjectConfig> {

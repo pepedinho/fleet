@@ -12,7 +12,9 @@ use crate::{
 pub async fn handle_watch(cli: &Cli) -> Result<()> {
     let config_path = Path::new("./fleet.yml");
     if !config_path.exists() {
-        return Err(anyhow::anyhow!("File `fleet.yml` missing from current directory."))?;
+        return Err(anyhow::anyhow!(
+            "File `fleet.yml` missing from current directory."
+        ))?;
     }
 
     let config = load_config(config_path)?;
@@ -37,16 +39,10 @@ pub async fn handle_watch(cli: &Cli) -> Result<()> {
             }
         }
         Commands::Ps { all: _ } => DaemonRequest::ListWatches,
-        Commands::Logs { id_or_name } => {
-            match id_or_name {
-                Some(s) => {
-                    DaemonRequest::LogsWatches {id: s.to_string() }
-                },
-                None => {
-                    DaemonRequest::LogsWatches { id: repo.name }
-                }
-            }
-        }
+        Commands::Logs { id_or_name } => match id_or_name {
+            Some(s) => DaemonRequest::LogsWatches { id: s.to_string() },
+            None => DaemonRequest::LogsWatches { id: repo.name },
+        },
         _ => {
             return Err(anyhow::anyhow!("oui"))?;
         }

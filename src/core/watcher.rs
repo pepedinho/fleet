@@ -7,7 +7,10 @@ use tokio::fs;
 use uuid::Uuid;
 
 use crate::{
-    config::parser::ProjectConfig, core::state::{add_watch, save_watches}, exec::runner::run_update, git::{remote::get_remote_branch_hash, repo::Repo}
+    config::parser::ProjectConfig,
+    core::state::{add_watch, save_watches},
+    exec::runner::run_update,
+    git::{remote::get_remote_branch_hash, repo::Repo},
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -21,21 +24,21 @@ pub struct WatchContext {
 
 impl WatchContext {
     pub fn log_path(&self) -> PathBuf {
-        let home  = home_dir().unwrap();
+        let home = home_dir().unwrap();
 
         let log_dir = home.join(".fleet").join("logs");
-        log_dir.join(self.id.to_string())
+        log_dir.join(self.id.to_string() + ".log")
     }
 
     pub fn log_path_by_id(id: Uuid) -> PathBuf {
-        let home  = home_dir().unwrap();
+        let home = home_dir().unwrap();
 
         let log_dir = home.join(".fleet").join("logs");
-        log_dir.join(id.to_string())
+        log_dir.join(id.to_string() + ".log")
     }
 
     pub async fn init_logs() -> Result<()> {
-        let home  = home_dir().ok_or_else(|| anyhow::anyhow!("Failed to find HOME directory"))?;
+        let home = home_dir().ok_or_else(|| anyhow::anyhow!("Failed to find HOME directory"))?;
 
         let log_dir = home.join(".fleet").join("logs");
 

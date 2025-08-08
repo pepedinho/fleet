@@ -12,6 +12,7 @@ mod core;
 mod exec;
 mod git;
 mod ipc;
+mod logging;
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {

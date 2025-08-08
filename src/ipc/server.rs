@@ -1,14 +1,19 @@
 use std::{path::PathBuf, str::FromStr, sync::Arc};
 
 use crate::{
-    config::parser::ProjectConfig,
-    core::{state::{add_watch, get_id_by_name, AppState}, watcher::WatchContext},
+    config::parser::{ProjectConfig, UpdateCommand},
+    core::{
+        state::{AppState, add_watch, get_id_by_name},
+        watcher::WatchContext,
+    },
     git::repo::Repo,
 };
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use tokio::{
-    fs::{File, OpenOptions}, io::{AsyncReadExt, AsyncWriteExt, BufReader, WriteHalf}, net::UnixStream
+    fs::{File, OpenOptions},
+    io::{AsyncReadExt, AsyncWriteExt, BufReader, WriteHalf},
+    net::UnixStream,
 };
 use uuid::Uuid;
 
@@ -20,7 +25,7 @@ pub enum DaemonRequest {
         project_dir: String,
         branch: String,
         repo: Repo,
-        update_cmds: Vec<String>,
+        update_cmds: Vec<UpdateCommand>,
     },
 
     #[serde(rename = "stop_watch")]
@@ -30,7 +35,7 @@ pub enum DaemonRequest {
     ListWatches,
 
     #[serde(rename = "logs_watch")]
-    LogsWatches {id: String},
+    LogsWatches { id: String },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -71,7 +76,10 @@ async fn get_logs_by_id(id: Uuid) -> Result<String> {
     Ok(contents)
 }
 
-async fn send_error_response(stream: &mut WriteHalf<UnixStream>, message: &str) -> Result<(), anyhow::Error> {
+async fn send_error_response(
+    stream: &mut WriteHalf<UnixStream>,
+    message: &str,
+) -> Result<(), anyhow::Error> {
     let response = DaemonResponse::Error(message.to_string());
     let response_str = serde_json::to_string(&response)? + "\n";
     stream.write_all(response_str.as_bytes()).await?;
@@ -84,7 +92,6 @@ pub async fn handle_request(
     state: Arc<AppState>,
     stream: &mut WriteHalf<UnixStream>,
 ) -> Result<(), anyhow::Error> {
-
     println!("treat the request");
     let response = match req {
         DaemonRequest::AddWatch {
@@ -104,11 +111,13 @@ pub async fn handle_request(
                 project_dir,
                 id,
             };
-            let mut log_file= get_log_file(&ctx).await?;
+            let mut log_file = get_log_file(&ctx).await?;
             let mut guard = state.watches.write().await;
             add_watch(&ctx).await?;
             guard.insert(id, ctx);
-            log_file.write_all(format!("📌 Project registered with ID: {}", id).as_bytes()).await?;
+            log_file
+                .write_all(format!("📌 Project registered with ID: {}", id).as_bytes())
+                .await?;
             DaemonResponse::Success(format!("📌 Project registered with ID: {}", id))
         }
         DaemonRequest::StopWatch { id } => {
@@ -156,17 +165,16 @@ pub async fn handle_request(
 
             DaemonResponse::ListWatches(r)
         }
-        DaemonRequest::LogsWatches {id} => {
+        DaemonRequest::LogsWatches { id } => {
             let id = match Uuid::from_str(&id) {
                 Ok(i) => i,
-                Err(_) => {
-                    match get_id_by_name(&id).await? {
-                        Some(uuid) => uuid,
-                        None => {
-                            return send_error_response(stream, "❌ No repo with this name exists").await;
-                        }
+                Err(_) => match get_id_by_name(&id).await? {
+                    Some(uuid) => uuid,
+                    None => {
+                        return send_error_response(stream, "❌ No repo with this name exists")
+                            .await;
                     }
-                }
+                },
             };
 
             match get_logs_by_id(id).await {
@@ -174,8 +182,9 @@ pub async fn handle_request(
                 Err(e) => {
                     return send_error_response(
                         stream,
-                         &format!("❌ Failed to read logs for ID {}: {}", id, e),
-                    ).await;
+                        &format!("❌ Failed to read logs for ID {}: {}", id, e),
+                    )
+                    .await;
                 }
             }
         }
