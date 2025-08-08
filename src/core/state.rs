@@ -1,24 +1,22 @@
 use std::{collections::HashMap, path::PathBuf};
 
+use crate::core::watcher::WatchContext;
 use anyhow::{Ok, Result};
 use serde::{Deserialize, Serialize};
 use tokio::{fs, sync::RwLock};
-use uuid::Uuid;
-
-use crate::core::watcher::WatchContext;
 
 #[derive(Default)]
 pub struct AppState {
-    pub watches: RwLock<HashMap<Uuid, WatchContext>>,
+    pub watches: RwLock<HashMap<String, WatchContext>>,
 }
 
 impl AppState {
     pub async fn load_from_disk() -> Result<Self, anyhow::Error> {
         let registry = load_watches().await?;
-        let watches: HashMap<Uuid, WatchContext> = registry
+        let watches: HashMap<String, WatchContext> = registry
             .projects
             .into_iter()
-            .map(|ctx| (ctx.id, ctx))
+            .map(|ctx| (ctx.id.clone(), ctx))
             .collect();
 
         Ok(Self {
@@ -32,7 +30,7 @@ impl AppState {
             projects: guard.values().cloned().collect(),
         };
         save_watches(&registry).await
-    } 
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Default)]
@@ -41,9 +39,8 @@ pub struct WatchRegistry {
 }
 
 pub fn get_watch_path() -> PathBuf {
-    let path = dirs::data_local_dir().unwrap_or_else(|| {
-        std::env::current_dir().expect("Failed to get current directory")
-    });
+    let path = dirs::data_local_dir()
+        .unwrap_or_else(|| std::env::current_dir().expect("Failed to get current directory"));
     path.join("fleetd").join("watches.json")
 }
 
@@ -78,7 +75,9 @@ pub async fn save_watches(watches: &WatchRegistry) -> Result<()> {
 pub async fn add_watch(ctx: &WatchContext) -> Result<()> {
     let mut watches = load_watches().await?;
 
-    if let Some(existing) = watches.projects.iter_mut()
+    if let Some(existing) = watches
+        .projects
+        .iter_mut()
         .find(|p| p.project_dir == ctx.project_dir)
     {
         *existing = ctx.clone();
@@ -90,25 +89,27 @@ pub async fn add_watch(ctx: &WatchContext) -> Result<()> {
     Ok(())
 }
 
-pub async fn remove_watch_by_id(id: Uuid) -> Result<()> {
+pub async fn remove_watch_by_id(id: &str) -> Result<()> {
     let mut watches = load_watches().await?;
     watches.projects.retain(|p| p.id != id); // garder seulement les projet avec un id different de celui a supprimé
     save_watches(&watches).await?;
     Ok(())
 }
 
-pub async fn get_id_by_name(name: &str) -> Result<Option<Uuid>> {
+pub async fn get_id_by_name(name: &str) -> Result<Option<String>> {
     let watches = load_watches().await?;
-    Ok(watches.projects.iter()
+    Ok(watches
+        .projects
+        .iter()
         .find(|p| p.repo.name == name)
-        .map(|p| p.id)
-    )
+        .map(|p| p.id.clone()))
 }
 
-pub async fn get_name_by_id(id: Uuid) -> Result<Option<String>> {
+pub async fn get_name_by_id(id: &str) -> Result<Option<String>> {
     let watches = load_watches().await?;
-    Ok(watches.projects.iter()
+    Ok(watches
+        .projects
+        .iter()
         .find(|p| p.id == id)
-        .map(|p| p.repo.name.clone())
-    )
+        .map(|p| p.repo.name.clone()))
 }

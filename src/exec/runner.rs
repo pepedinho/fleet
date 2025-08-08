@@ -23,7 +23,7 @@ pub async fn run_update(ctx: &WatchContext) -> Result<(), anyhow::Error> {
         return Ok(());
     }
 
-    let default_timeout = ctx.config.timeout_secs.unwrap_or(DEFAULT_TIMEOUT);
+    let default_timeout = ctx.config.timeout.unwrap_or(DEFAULT_TIMEOUT);
 
     for (i, cmd_line) in update_commands.iter().enumerate() {
         logger
