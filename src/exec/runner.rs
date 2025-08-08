@@ -44,7 +44,6 @@ pub async fn run_update(ctx: &WatchContext) -> Result<(), anyhow::Error> {
             logger
                 .info("Command marked as blocking: running in background without waiting")
                 .await?;
-            //TODO: run in background
             let log_path = ctx.log_path();
 
             let stdout_file = OpenOptions::new()

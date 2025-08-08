@@ -18,7 +18,7 @@ mod logging;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     init_watch_file().await?;
-    let state = Arc::new(AppState::load_from_disk().await?); // vide a chaque redemarage (probleme a resoudre)
+    let state = Arc::new(AppState::load_from_disk().await?);
     WatchContext::init_logs().await?;
 
     tokio::spawn(supervisor_loop(Arc::clone(&state), 30));
