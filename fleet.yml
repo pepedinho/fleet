@@ -1,6 +1,7 @@
 update:
-  - echo "oui je test"
-  - cargo b
+  - cmd: echo "oui je test"
+  - cmd: ping google.com
+    blocking: true
 
 on_confliot:
   - echo "un conflit est survenu"
