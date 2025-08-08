@@ -18,11 +18,7 @@ pub async fn supervisor_loop(state: Arc<AppState>, interval_secs: u64) {
 
     loop {
         ticker.tick().await;
-
-        // let projects = {
-        //     let guard = state.watches.read().await;
-        //     guard.clone()
-        // };
+        
         let mut dirty = false;
         let mut to_update = Vec::new();
         {
