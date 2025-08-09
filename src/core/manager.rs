@@ -52,6 +52,9 @@ async fn collect_updates(state: &Arc<AppState>) -> Vec<(String, String)> {
     let guard = state.watches.read().await;
 
     for (id, ctx) in guard.iter() {
+        if ctx.paused {
+            continue;
+        }
         match watch_once(ctx).await {
             Ok(Some(new_commit)) => {
                 println!("[{}] ✔ OK", id);
@@ -74,7 +77,10 @@ async fn update_commit(state: &Arc<AppState>, id: &str, new_commit: String) {
 }
 
 async fn get_watch_ctx(state: &Arc<AppState>, id: &str) -> Option<WatchContext> {
-    let watches_read: tokio::sync::RwLockReadGuard<'_, std::collections::HashMap<String, WatchContext>> = state.watches.read().await;
+    let watches_read: tokio::sync::RwLockReadGuard<
+        '_,
+        std::collections::HashMap<String, WatchContext>,
+    > = state.watches.read().await;
     watches_read.get(id).cloned()
 }
 
