@@ -5,10 +5,11 @@ use crate::{
     config::parser::{ProjectConfig, UpdateCommand},
     core::{
         id::short_id,
-        state::{AppState, add_watch, get_id_by_name, get_name_by_id},
+        state::{AppState, add_watch, get_id_by_name, get_name_by_id, save_watches},
         watcher::WatchContext,
     },
     git::repo::Repo,
+    logging::Logger,
 };
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -77,120 +78,161 @@ async fn get_logs_by_id(id: &str) -> Result<String> {
     Ok(contents)
 }
 
-async fn send_error_response(
-    stream: &mut WriteHalf<UnixStream>,
-    message: &str,
-) -> Result<(), anyhow::Error> {
-    let response = DaemonResponse::Error(message.to_string());
-    let response_str = serde_json::to_string(&response)? + "\n";
-    stream.write_all(response_str.as_bytes()).await?;
-    stream.flush().await?;
-    Ok(())
-}
-
+/// Handles a daemon request and sends the resulting [`DaemonResponse`] back to the client.
+/// All errors inside handlers are mapped to `DaemonResponse::Error`.
 pub async fn handle_request(
     req: DaemonRequest,
     state: Arc<AppState>,
     stream: &mut WriteHalf<UnixStream>,
 ) -> Result<(), anyhow::Error> {
     println!("treat the request");
+
     let response = match req {
         DaemonRequest::AddWatch {
             project_dir,
             branch,
             repo,
             update_cmds,
-        } => {
-            let id = short_id();
-            let ctx = WatchContext {
-                branch,
-                repo,
-                config: ProjectConfig {
-                    update: update_cmds,
-                    ..Default::default()
-                },
-                project_dir,
-                id: id.clone(),
-            };
-            let mut log_file = get_log_file(&ctx).await?;
+        } => handle_add_watch(state, project_dir, branch, repo, update_cmds).await,
+
+        DaemonRequest::StopWatch { id } => handle_stop_watch(state, id).await,
+
+        DaemonRequest::ListWatches => handle_list_watches(state).await,
+
+        DaemonRequest::LogsWatches { id } => handle_logs_watches(id).await,
+    };
+
+    send_response(stream, response).await?;
+    Ok(())
+}
+
+/// Registers a new watch, updates the application state, and returns a response.
+/// Any error will be converted to `DaemonResponse::Error`.
+async fn handle_add_watch(
+    state: Arc<AppState>,
+    project_dir: String,
+    branch: String,
+    repo: Repo,
+    update_cmds: Vec<UpdateCommand>,
+) -> DaemonResponse {
+    let id = short_id();
+    let ctx = WatchContext {
+        branch,
+        repo,
+        config: ProjectConfig {
+            update: update_cmds,
+            ..Default::default()
+        },
+        project_dir,
+        id: id.clone(),
+    };
+
+    let result = async {
+        let logger = Logger::new(&ctx.log_path()).await?;
+        {
             let mut guard = state.watches.write().await;
             add_watch(&ctx).await?;
             guard.insert(id.clone(), ctx);
-            log_file
-                .write_all(format!("📌 Project registered with ID: {}", &id).as_bytes())
-                .await?;
-            DaemonResponse::Success(format!("📌 Project registered with ID: {}", id))
         }
-        DaemonRequest::StopWatch { id } => {
-            let mut guard = state.watches.write().await;
-            if guard.remove(&id).is_some() {
-                DaemonResponse::Success(format!("🛑 Watch stopped for ID: {}", id))
-            } else {
-                DaemonResponse::Success(format!("⚠ ID not found: {}", id))
-            }
+        logger
+            .info(&format!("Project registered with ID : {}", &id))
+            .await?;
+        Ok::<_, anyhow::Error>(())
+    }
+    .await;
+
+    match result {
+        Ok(_) => DaemonResponse::Success(format!("📌 Project registered with ID: {}", id)),
+        Err(e) => DaemonResponse::Error(format!("Failed to add watch: {}", e)),
+    }
+}
+
+/// Stops a watch by ID if it exists in the application state.
+async fn handle_stop_watch(state: Arc<AppState>, id: String) -> DaemonResponse {
+    match async {
+        let mut guard = state.watches.write().await;
+        if guard.remove(&id).is_some() {
+            Ok(format!("🛑 Watch stopped for ID: {}", id))
+        } else {
+            Err(format!("⚠ ID not found: {}", id))
         }
+    }
+    .await
+    {
+        Ok(msg) => DaemonResponse::Success(msg),
+        Err(e) => DaemonResponse::Error(format!("Failed to stop watch: {}", e)),
+    }
+}
 
-        DaemonRequest::ListWatches => {
-            let guard = state.watches.read().await;
-            let mut r: Vec<WatchInfo> = Vec::new();
-
-            for (id, ctx) in guard.iter() {
-                // Extraction des infos depuis ctx.repo
-                let repo_name = &ctx.repo.name;
-                let branch = &ctx.repo.branch;
-                let commit_hash = &ctx.repo.last_commit;
-                let remote_url = &ctx.repo.remote;
-                let project_dir = &ctx.project_dir;
-
-                let short_commit = if commit_hash.len() > 8 {
-                    &commit_hash[..8]
+/// Returns a list of all current watches as a [`DaemonResponse::ListWatches`].
+async fn handle_list_watches(state: Arc<AppState>) -> DaemonResponse {
+    match async {
+        let guard = state.watches.read().await;
+        let result = guard
+            .iter()
+            .map(|(id, ctx)| {
+                let short_commit = ctx.repo.last_commit.chars().take(8).collect::<String>();
+                let short_url = if ctx.repo.remote.len() > 40 {
+                    format!("{}...", &ctx.repo.remote[..37])
                 } else {
-                    commit_hash
+                    ctx.repo.remote.clone()
                 };
-
-                let short_url = if remote_url.len() > 40 {
-                    format!("{}...", &remote_url[..37])
-                } else {
-                    remote_url.clone()
-                };
-
-                r.push(WatchInfo {
-                    branch: branch.to_string(),
-                    project_dir: project_dir.to_string(),
-                    short_commit: short_commit.to_string(),
+                WatchInfo {
+                    branch: ctx.repo.branch.clone(),
+                    project_dir: ctx.project_dir.clone(),
+                    short_commit,
                     short_url,
-                    repo_name: repo_name.to_string(),
-                    id: String::from(id),
-                });
-            }
-
-            DaemonResponse::ListWatches(r)
-        }
-        DaemonRequest::LogsWatches { id } => {
-            let id = match get_name_by_id(&id).await {
-                Ok(Some(_name)) => id,
-                Err(_) | Ok(None) => match get_id_by_name(&id).await? {
-                    Some(uuid) => uuid,
-                    None => {
-                        return send_error_response(stream, "❌ No repo with this name exists")
-                            .await;
-                    }
-                },
-            };
-
-            match get_logs_by_id(&id).await {
-                Ok(logs) => DaemonResponse::Success(logs),
-                Err(e) => {
-                    return send_error_response(
-                        stream,
-                        &format!("❌ Failed to read logs for ID {}: {}", id, e),
-                    )
-                    .await;
+                    repo_name: ctx.repo.name.clone(),
+                    id: id.clone(),
                 }
-            }
-        }
-    };
+            })
+            .collect();
+        Ok::<_, anyhow::Error>(DaemonResponse::ListWatches(result))
+    }
+    .await
+    {
+        Ok(resp) => resp,
+        Err(e) => DaemonResponse::Error(format!("Failed to list watches: {}", e)),
+    }
+}
 
+/// Fetches logs for a given watch by ID or name.
+/// If the watch is not found, sends an error directly to the client.
+/// Returns `None` if an error was already sent to the stream.
+async fn handle_logs_watches(id: String) -> DaemonResponse {
+    match async {
+        let id = match get_name_by_id(&id).await {
+            Ok(Some(_)) => id,
+            Err(_) | Ok(None) => match get_id_by_name(&id).await? {
+                Some(uuid) => uuid,
+                None => anyhow::bail!("No repo with this name exists"),
+            },
+        };
+        let logs = get_logs_by_id(&id).await?;
+        Ok::<_, anyhow::Error>(DaemonResponse::Success(logs))
+    }
+    .await
+    {
+        Ok(resp) => resp,
+        Err(e) => DaemonResponse::Error(format!("Failed to fetch logs: {}", e)),
+    }
+}
+
+async fn send_response(
+    stream: &mut WriteHalf<UnixStream>,
+    response: DaemonResponse,
+) -> Result<(), anyhow::Error> {
+    let response_str = serde_json::to_string(&response)? + "\n";
+    stream.write_all(response_str.as_bytes()).await?;
+    stream.flush().await?;
+    Ok(())
+}
+
+async fn send_error_response(
+    stream: &mut WriteHalf<UnixStream>,
+    message: &str,
+) -> Result<(), anyhow::Error> {
+    let response = DaemonResponse::Error(message.to_string());
     let response_str = serde_json::to_string(&response)? + "\n";
     stream.write_all(response_str.as_bytes()).await?;
     stream.flush().await?;
