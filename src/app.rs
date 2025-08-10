@@ -28,7 +28,7 @@ pub fn build_watch_request(cli: &Cli, repo: Repo) -> Result<DaemonRequest> {
         Commands::Logs { id_or_name } => Ok(build_logs_request(id_or_name, repo)),
         Commands::Stop { id } => Ok(DaemonRequest::StopWatch { id: id.to_string() }),
         Commands::Up { id } => Ok(DaemonRequest::UpWatch { id: id.to_string() }),
-        _ => Err(anyhow::anyhow!("Unsuported command")),
+        Commands::Rm { id } => Ok(DaemonRequest::RmWatch { id: id.to_string() }),
     }
 }
 
