@@ -5,7 +5,7 @@ use crate::{
     config::parser::{ProjectConfig, UpdateCommand},
     core::{
         id::short_id,
-        state::{AppState, add_watch, get_id_by_name, get_name_by_id},
+        state::{AppState, add_watch, get_id_by_name, get_name_by_id, remove_watch_by_id},
         watcher::WatchContext,
     },
     git::repo::Repo,
@@ -35,6 +35,9 @@ pub enum DaemonRequest {
 
     #[serde(rename = "up_watch")]
     UpWatch { id: String },
+
+    #[serde(rename = "rm_watch")]
+    RmWatch { id: String },
 
     #[serde(rename = "list_watch")]
     ListWatches { all: bool },
@@ -103,6 +106,8 @@ pub async fn handle_request(
 
         DaemonRequest::UpWatch { id } => handle_up_watch(state, id).await,
 
+        DaemonRequest::RmWatch { id } => handle_rm_watch(state, id).await,
+
         DaemonRequest::ListWatches { all } => handle_list_watches(state, all).await,
 
         DaemonRequest::LogsWatches { id } => handle_logs_watches(id).await,
@@ -118,10 +123,22 @@ async fn handle_add_watch(
     state: Arc<AppState>,
     project_dir: String,
     branch: String,
-    repo: Repo,
+    mut repo: Repo,
     update_cmds: Vec<UpdateCommand>,
 ) -> DaemonResponse {
-    let id = short_id();
+    let mut guard = state.watches.write().await;
+    let existing_id = guard
+        .iter()
+        .find(|(_, ctx)| ctx.project_dir == project_dir)
+        .map(|(id, ctx)| {
+            if ctx.repo.branch != branch {
+                repo.last_commit = ctx.repo.last_commit.clone();
+            }
+            id.clone()
+        });
+
+    let id = existing_id.unwrap_or_else(short_id);
+
     let ctx = WatchContext {
         branch,
         repo,
@@ -137,7 +154,8 @@ async fn handle_add_watch(
     let result = async {
         let logger = Logger::new(&ctx.log_path()).await?;
         {
-            let mut guard = state.watches.write().await;
+            // delete the projects with the same project_dir, before saving the new one
+            guard.retain(|_, existing_ctx| existing_ctx.project_dir != ctx.project_dir);
             add_watch(&ctx).await?;
             guard.insert(id.clone(), ctx);
         }
@@ -173,6 +191,7 @@ async fn handle_stop_watch(state: Arc<AppState>, id: String) -> DaemonResponse {
     }
 }
 
+/// Run a watch by ID if it exists in the application state.
 async fn handle_up_watch(state: Arc<AppState>, id: String) -> DaemonResponse {
     match async {
         let mut guard = state.watches.write().await;
@@ -180,6 +199,24 @@ async fn handle_up_watch(state: Arc<AppState>, id: String) -> DaemonResponse {
             w.run();
             add_watch(w).await?;
             Ok::<_, anyhow::Error>(format!("🟢 Watch up for ID: {}", id))
+        } else {
+            Err(anyhow::anyhow!("⚠ ID not found: {}", id))
+        }
+    }
+    .await
+    {
+        Ok(msg) => DaemonResponse::Success(msg),
+        Err(e) => DaemonResponse::Error(format!("Failed to stop watch: {}", e)),
+    }
+}
+
+/// Rm a watch by ID if it exists in the application state.
+async fn handle_rm_watch(state: Arc<AppState>, id: String) -> DaemonResponse {
+    match async {
+        let mut guard = state.watches.write().await;
+        if let Some(w) = guard.remove(&id) {
+            remove_watch_by_id(&id).await?;
+            Ok::<_, anyhow::Error>(format!("Project: {} was deleted", w.repo.name))
         } else {
             Err(anyhow::anyhow!("⚠ ID not found: {}", id))
         }
@@ -206,7 +243,7 @@ async fn handle_list_watches(state: Arc<AppState>, all: bool) -> DaemonResponse 
                     ctx.repo.remote.clone()
                 };
                 WatchInfo {
-                    branch: ctx.repo.branch.clone(),
+                    branch: ctx.branch.clone(),
                     project_dir: ctx.project_dir.clone(),
                     short_commit,
                     short_url,
