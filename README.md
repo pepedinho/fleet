@@ -81,6 +81,11 @@ Resume watching a previously stopped project.
 
 ---
 
+### `fleet rm <id>`
+removing a monitored project from the watch list.
+
+---
+
 ## YAML Configuration
 
 Each project has a `fleet.yml` file defining its update process and optional conflict or post-update actions.
