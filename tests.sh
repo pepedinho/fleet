@@ -1,0 +1,1 @@
+cargo test --test cli_test --test daemon_test -- --nocapture

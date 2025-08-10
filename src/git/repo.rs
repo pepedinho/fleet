@@ -1,7 +1,7 @@
 use git2::{Error, Repository};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Repo {
     pub branch: String,
     pub remote: String,
