@@ -3,7 +3,7 @@ use std::{fs, path::Path};
 use anyhow::{Context, Ok, Result};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct UpdateCommand {
     pub cmd: String,
     #[serde(default)]

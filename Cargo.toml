@@ -3,6 +3,10 @@ name = "fleet"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+name = "core_lib"
+path = "src/lib.rs"
+
 [[bin]]
 name = "fleet"
 path = "src/fleet.rs"
@@ -10,6 +14,9 @@ path = "src/fleet.rs"
 [[bin]]
 name = "fleetd"
 path = "src/fleetd.rs"
+
+[dev-dependencies]
+pretty_assertions = "1.3" 
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
