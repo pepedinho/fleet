@@ -21,7 +21,7 @@ pub async fn handle_watch(cli: &Cli) -> Result<()> {
 }
 
 /// Builds the appropriate [`DaemonRequest`] for the given CLI command.
-fn build_watch_request(cli: &Cli, repo: Repo) -> Result<DaemonRequest> {
+pub fn build_watch_request(cli: &Cli, repo: Repo) -> Result<DaemonRequest> {
     match &cli.command {
         Commands::Watch { branch } => build_add_watch_request(branch.clone(), repo),
         Commands::Ps { all } => Ok(DaemonRequest::ListWatches { all: *all }),
