@@ -24,8 +24,10 @@ pub async fn handle_watch(cli: &Cli) -> Result<()> {
 fn build_watch_request(cli: &Cli, repo: Repo) -> Result<DaemonRequest> {
     match &cli.command {
         Commands::Watch { branch } => build_add_watch_request(branch.clone(), repo),
-        Commands::Ps { .. } => Ok(DaemonRequest::ListWatches),
+        Commands::Ps { all } => Ok(DaemonRequest::ListWatches { all: *all }),
         Commands::Logs { id_or_name } => Ok(build_logs_request(id_or_name, repo)),
+        Commands::Stop { id } => Ok(DaemonRequest::StopWatch { id: id.to_string() }),
+        Commands::Up { id } => Ok(DaemonRequest::UpWatch { id: id.to_string() }),
         _ => Err(anyhow::anyhow!("Unsuported command")),
     }
 }

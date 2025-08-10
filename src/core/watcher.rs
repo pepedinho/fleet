@@ -18,9 +18,18 @@ pub struct WatchContext {
     pub config: ProjectConfig,
     pub project_dir: String,
     pub id: String,
+    pub paused: bool,
 }
 
 impl WatchContext {
+    pub fn stop(&mut self) {
+        self.paused = true;
+    }
+
+    pub fn run(&mut self) {
+        self.paused = false;
+    }
+
     pub fn log_path(&self) -> PathBuf {
         let home = home_dir().unwrap();
 

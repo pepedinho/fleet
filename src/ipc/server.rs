@@ -5,7 +5,7 @@ use crate::{
     config::parser::{ProjectConfig, UpdateCommand},
     core::{
         id::short_id,
-        state::{AppState, add_watch, get_id_by_name, get_name_by_id, save_watches},
+        state::{AppState, WatchRegistry, add_watch, get_id_by_name, get_name_by_id, save_watches},
         watcher::WatchContext,
     },
     git::repo::Repo,
@@ -33,8 +33,11 @@ pub enum DaemonRequest {
     #[serde(rename = "stop_watch")]
     StopWatch { id: String },
 
+    #[serde(rename = "up_watch")]
+    UpWatch { id: String },
+
     #[serde(rename = "list_watch")]
-    ListWatches,
+    ListWatches { all: bool },
 
     #[serde(rename = "logs_watch")]
     LogsWatches { id: String },
@@ -48,6 +51,7 @@ pub struct WatchInfo {
     pub short_url: String,
     pub repo_name: String,
     pub id: String,
+    pub paused: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -97,7 +101,9 @@ pub async fn handle_request(
 
         DaemonRequest::StopWatch { id } => handle_stop_watch(state, id).await,
 
-        DaemonRequest::ListWatches => handle_list_watches(state).await,
+        DaemonRequest::UpWatch { id } => handle_up_watch(state, id).await,
+
+        DaemonRequest::ListWatches { all } => handle_list_watches(state, all).await,
 
         DaemonRequest::LogsWatches { id } => handle_logs_watches(id).await,
     };
@@ -125,6 +131,7 @@ async fn handle_add_watch(
         },
         project_dir,
         id: id.clone(),
+        paused: false,
     };
 
     let result = async {
@@ -151,10 +158,30 @@ async fn handle_add_watch(
 async fn handle_stop_watch(state: Arc<AppState>, id: String) -> DaemonResponse {
     match async {
         let mut guard = state.watches.write().await;
-        if guard.remove(&id).is_some() {
-            Ok(format!("🛑 Watch stopped for ID: {}", id))
+        if let Some(w) = guard.get_mut(&id) {
+            w.stop();
+            add_watch(w).await?;
+            Ok::<_, anyhow::Error>(format!("🛑 Watch stopped for ID: {}", id))
         } else {
-            Err(format!("⚠ ID not found: {}", id))
+            Err(anyhow::anyhow!("⚠ ID not found: {}", id))
+        }
+    }
+    .await
+    {
+        Ok(msg) => DaemonResponse::Success(msg),
+        Err(e) => DaemonResponse::Error(format!("Failed to stop watch: {}", e)),
+    }
+}
+
+async fn handle_up_watch(state: Arc<AppState>, id: String) -> DaemonResponse {
+    match async {
+        let mut guard = state.watches.write().await;
+        if let Some(w) = guard.get_mut(&id) {
+            w.run();
+            add_watch(w).await?;
+            Ok::<_, anyhow::Error>(format!("🟢 Watch up for ID: {}", id))
+        } else {
+            Err(anyhow::anyhow!("⚠ ID not found: {}", id))
         }
     }
     .await
@@ -165,11 +192,12 @@ async fn handle_stop_watch(state: Arc<AppState>, id: String) -> DaemonResponse {
 }
 
 /// Returns a list of all current watches as a [`DaemonResponse::ListWatches`].
-async fn handle_list_watches(state: Arc<AppState>) -> DaemonResponse {
+async fn handle_list_watches(state: Arc<AppState>, all: bool) -> DaemonResponse {
     match async {
         let guard = state.watches.read().await;
         let result = guard
             .iter()
+            .filter(|(_, ctx)| all || !ctx.paused) // if all = true everything pass, else only if paused is false they can pass
             .map(|(id, ctx)| {
                 let short_commit = ctx.repo.last_commit.chars().take(8).collect::<String>();
                 let short_url = if ctx.repo.remote.len() > 40 {
@@ -184,6 +212,7 @@ async fn handle_list_watches(state: Arc<AppState>) -> DaemonResponse {
                     short_url,
                     repo_name: ctx.repo.name.clone(),
                     id: id.clone(),
+                    paused: ctx.paused,
                 }
             })
             .collect();
