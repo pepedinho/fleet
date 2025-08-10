@@ -19,7 +19,7 @@ use tokio::{
     net::UnixStream,
 };
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(tag = "action")]
 pub enum DaemonRequest {
     #[serde(rename = "add_watch")]
