@@ -5,7 +5,7 @@ use crate::{
     config::parser::{ProjectConfig, UpdateCommand},
     core::{
         id::short_id,
-        state::{AppState, WatchRegistry, add_watch, get_id_by_name, get_name_by_id, save_watches},
+        state::{AppState, add_watch, get_id_by_name, get_name_by_id},
         watcher::WatchContext,
     },
     git::repo::Repo,
