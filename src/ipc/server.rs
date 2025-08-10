@@ -123,10 +123,22 @@ async fn handle_add_watch(
     state: Arc<AppState>,
     project_dir: String,
     branch: String,
-    repo: Repo,
+    mut repo: Repo,
     update_cmds: Vec<UpdateCommand>,
 ) -> DaemonResponse {
-    let id = short_id();
+    let mut guard = state.watches.write().await;
+    let existing_id = guard
+        .iter()
+        .find(|(_, ctx)| ctx.project_dir == project_dir)
+        .map(|(id, ctx)| {
+            if ctx.repo.branch != branch {
+                repo.last_commit = ctx.repo.last_commit.clone();
+            }
+            id.clone()
+        });
+
+    let id = existing_id.unwrap_or_else(short_id);
+
     let ctx = WatchContext {
         branch,
         repo,
@@ -142,7 +154,8 @@ async fn handle_add_watch(
     let result = async {
         let logger = Logger::new(&ctx.log_path()).await?;
         {
-            let mut guard = state.watches.write().await;
+            // delete the projects with the same project_dir, before saving the new one
+            guard.retain(|_, existing_ctx| existing_ctx.project_dir != ctx.project_dir);
             add_watch(&ctx).await?;
             guard.insert(id.clone(), ctx);
         }
