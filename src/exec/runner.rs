@@ -55,19 +55,11 @@ pub async fn run_update(ctx: &WatchContext) -> Result<(), anyhow::Error> {
                 .append(true)
                 .open(&log_path)?;
 
-            match run_command_background(
-                program,
-                args,
-                &ctx.project_dir,
-                stdout_file,
-                stderr_file,
-            )
-            .await
+            match run_command_background(program, args, &ctx.project_dir, stdout_file, stderr_file)
+                .await
             {
                 Ok(_child) => {
-                    logger
-                        .info("Background command launched")
-                        .await?;
+                    logger.info("Background command launched").await?;
                 }
                 Err(e) => {
                     logger
