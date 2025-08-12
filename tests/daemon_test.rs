@@ -44,7 +44,7 @@ async fn test_info_waring_error() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn test_concurent_writes() -> anyhow::Result<()> {
+async fn test_concurent_log_writes() -> anyhow::Result<()> {
     let dir = temp_dir();
     let file_path = dir.join("multi.log");
     let logger = Logger::new(&file_path).await?;
