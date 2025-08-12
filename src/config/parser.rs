@@ -28,7 +28,7 @@ pub struct ProjectConfig {
 
 pub fn load_config(path: &Path) -> Result<ProjectConfig> {
     let content = fs::read_to_string(path)
-        .with_context(|| format!("Error reading config file {:?}", path))?;
+        .with_context(|| format!("Error reading config file {path:?}"))?;
 
     let config: ProjectConfig =
         serde_yaml::from_str(&content).with_context(|| "Error parsing YAML configuration file")?;

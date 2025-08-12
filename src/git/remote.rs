@@ -39,7 +39,7 @@ pub fn get_remote_branch_hash(url: &str, branch: &str) -> Result<String, Error> 
     remote.connect_auth(git2::Direction::Fetch, Some(callbacks), None)?;
 
     let refs = remote.list()?;
-    let ref_to_find = format!("refs/heads/{}", branch);
+    let ref_to_find = format!("refs/heads/{branch}");
 
     for r in refs {
         if r.name() == ref_to_find {
@@ -48,7 +48,6 @@ pub fn get_remote_branch_hash(url: &str, branch: &str) -> Result<String, Error> 
     }
 
     Err(git2::Error::from_str(&format!(
-        "Branch {} not found",
-        branch
+        "Branch {branch} not found"
     )))
 }
