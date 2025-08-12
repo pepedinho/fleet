@@ -167,8 +167,8 @@ async fn handle_add_watch(
     .await;
 
     match result {
-        Ok(_) => DaemonResponse::Success(format!("📌 Project registered with ID: {}", id)),
-        Err(e) => DaemonResponse::Error(format!("Failed to add watch: {}", e)),
+        Ok(_) => DaemonResponse::Success(format!("📌 Project registered with ID: {id}")),
+        Err(e) => DaemonResponse::Error(format!("Failed to add watch: {e}")),
     }
 }
 
@@ -179,7 +179,7 @@ async fn handle_stop_watch(state: Arc<AppState>, id: String) -> DaemonResponse {
         if let Some(w) = guard.get_mut(&id) {
             w.stop();
             add_watch(w).await?;
-            Ok::<_, anyhow::Error>(format!("🛑 Watch stopped for ID: {}", id))
+            Ok::<_, anyhow::Error>(format!("🛑 Watch stopped for ID: {id}"))
         } else {
             Err(anyhow::anyhow!("⚠ ID not found: {}", id))
         }
@@ -187,7 +187,7 @@ async fn handle_stop_watch(state: Arc<AppState>, id: String) -> DaemonResponse {
     .await
     {
         Ok(msg) => DaemonResponse::Success(msg),
-        Err(e) => DaemonResponse::Error(format!("Failed to stop watch: {}", e)),
+        Err(e) => DaemonResponse::Error(format!("Failed to stop watch: {e}")),
     }
 }
 
@@ -198,7 +198,7 @@ async fn handle_up_watch(state: Arc<AppState>, id: String) -> DaemonResponse {
         if let Some(w) = guard.get_mut(&id) {
             w.run();
             add_watch(w).await?;
-            Ok::<_, anyhow::Error>(format!("🟢 Watch up for ID: {}", id))
+            Ok::<_, anyhow::Error>(format!("🟢 Watch up for ID: {id}"))
         } else {
             Err(anyhow::anyhow!("⚠ ID not found: {}", id))
         }
@@ -206,7 +206,7 @@ async fn handle_up_watch(state: Arc<AppState>, id: String) -> DaemonResponse {
     .await
     {
         Ok(msg) => DaemonResponse::Success(msg),
-        Err(e) => DaemonResponse::Error(format!("Failed to stop watch: {}", e)),
+        Err(e) => DaemonResponse::Error(format!("Failed to stop watch: {e}")),
     }
 }
 
@@ -224,7 +224,7 @@ async fn handle_rm_watch(state: Arc<AppState>, id: String) -> DaemonResponse {
     .await
     {
         Ok(msg) => DaemonResponse::Success(msg),
-        Err(e) => DaemonResponse::Error(format!("Failed to stop watch: {}", e)),
+        Err(e) => DaemonResponse::Error(format!("Failed to stop watch: {e}")),
     }
 }
 
@@ -258,7 +258,7 @@ async fn handle_list_watches(state: Arc<AppState>, all: bool) -> DaemonResponse 
     .await
     {
         Ok(resp) => resp,
-        Err(e) => DaemonResponse::Error(format!("Failed to list watches: {}", e)),
+        Err(e) => DaemonResponse::Error(format!("Failed to list watches: {e}")),
     }
 }
 
@@ -280,7 +280,7 @@ async fn handle_logs_watches(id: String) -> DaemonResponse {
     .await
     {
         Ok(resp) => resp,
-        Err(e) => DaemonResponse::Error(format!("Failed to fetch logs: {}", e)),
+        Err(e) => DaemonResponse::Error(format!("Failed to fetch logs: {e}")),
     }
 }
 

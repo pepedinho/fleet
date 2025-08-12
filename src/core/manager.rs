@@ -29,17 +29,17 @@ pub async fn supervisor_loop(state: Arc<AppState>, interval_secs: u64) {
             update_commit(&state, &id, new_commit.clone()).await;
             if let Some(ctx) = get_watch_ctx(&state, &id).await {
                 if run_update(&ctx).await.is_ok() {
-                    println!("[{}] ✅ Update succeeded", id);
+                    println!("[{id}] ✅ Update succeeded");
                     dirty = true;
                 } else {
-                    eprintln!("[{}] ❌ Update failed", id);
+                    eprintln!("[{id}] ❌ Update failed");
                 }
             }
         }
 
         if dirty {
             if let Err(e) = state.save_to_disk().await {
-                eprintln!("❌ Failed to save state: {}", e);
+                eprintln!("❌ Failed to save state: {e}");
             }
         }
     }
@@ -57,11 +57,11 @@ async fn collect_updates(state: &Arc<AppState>) -> Vec<(String, String)> {
         }
         match watch_once(ctx).await {
             Ok(Some(new_commit)) => {
-                println!("[{}] ✔ OK", id);
+                println!("[{id}] ✔ OK");
                 to_update.push((id.clone(), new_commit));
             }
-            Ok(None) => println!("[{}] ✔ No change", id),
-            Err(e) => eprintln!("[{}] ❌ Watch failed: {}", id, e),
+            Ok(None) => println!("[{id}] ✔ No change"),
+            Err(e) => eprintln!("[{id}] ❌ Watch failed: {e}"),
         }
     }
 
@@ -93,7 +93,7 @@ pub async fn start_socket_listener(state: Arc<AppState>) -> anyhow::Result<()> {
     let listener = UnixListener::bind(sock_path)?;
     std::fs::set_permissions(sock_path, std::fs::Permissions::from_mode(0o666))?;
 
-    println!("🔌 fleetd is listening on {:?}", sock_path);
+    println!("🔌 fleetd is listening on {sock_path:?}");
 
     loop {
         let (stream, _) = listener.accept().await?;
@@ -104,7 +104,7 @@ pub async fn start_socket_listener(state: Arc<AppState>) -> anyhow::Result<()> {
             let mut reader = BufReader::new(read_half);
             let mut buf = String::new();
             if let Err(e) = reader.read_line(&mut buf).await {
-                eprintln!("❌ Failed to read from stream: {}", e);
+                eprintln!("❌ Failed to read from stream: {e}");
                 return;
             }
 
@@ -112,11 +112,11 @@ pub async fn start_socket_listener(state: Arc<AppState>) -> anyhow::Result<()> {
             match parsed {
                 Ok(req) => {
                     if let Err(e) = handle_request(req, state, &mut write_half).await {
-                        eprintln!("❌ Request handling failed: {}", e);
+                        eprintln!("❌ Request handling failed: {e}");
                     }
                     println!("oui");
                 }
-                Err(e) => eprintln!("❌ JSON parsing error: {}", e),
+                Err(e) => eprintln!("❌ JSON parsing error: {e}"),
             }
         });
     }

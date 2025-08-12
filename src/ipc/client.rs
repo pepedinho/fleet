@@ -34,10 +34,10 @@ async fn read_daemon_response(stream: UnixStream) -> Result<DaemonResponse, anyh
 fn handle_daemon_response(response: DaemonResponse) {
     match response {
         DaemonResponse::Success(msg) => {
-            println!("✅ {}", msg);
+            println!("✅ {msg}");
         }
         DaemonResponse::Error(e) => {
-            eprintln!("❌ Error: {}", e);
+            eprintln!("❌ Error: {e}");
         }
         DaemonResponse::ListWatches(watches) => {
             print_watches_table(&watches);

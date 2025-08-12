@@ -8,7 +8,7 @@ use tokio::fs;
 #[test]
 fn test_id_generation() {
     let res = core::id::short_id();
-    println!("generate id => {}", res);
+    println!("generate id => {res}");
     assert_eq!(res.len(), 12);
 }
 
@@ -52,7 +52,7 @@ async fn test_concurent_log_writes() -> anyhow::Result<()> {
         .map(|i| {
             let logger = logger.clone();
             tokio::spawn(async move {
-                logger.info(&format!("message {}", i)).await.unwrap();
+                logger.info(&format!("message {i}")).await.unwrap();
             })
         })
         .collect();
@@ -63,7 +63,7 @@ async fn test_concurent_log_writes() -> anyhow::Result<()> {
 
     let contents = fs::read_to_string(&file_path).await?;
     for i in 0..10 {
-        assert!(contents.contains(&format!("message {}", i)));
+        assert!(contents.contains(&format!("message {i}")));
     }
 
     Ok(())
