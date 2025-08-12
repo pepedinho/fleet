@@ -37,10 +37,8 @@ pub async fn supervisor_loop(state: Arc<AppState>, interval_secs: u64) {
             }
         }
 
-        if dirty {
-            if let Err(e) = state.save_to_disk().await {
-                eprintln!("❌ Failed to save state: {e}");
-            }
+        if dirty && let Err(e) = state.save_to_disk().await {
+            eprintln!("❌ Failed to save state: {e}");
         }
     }
 }
