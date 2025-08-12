@@ -49,31 +49,21 @@ pub async fn run_update(ctx: &WatchContext) -> Result<(), anyhow::Error> {
             let stdout_file = OpenOptions::new()
                 .create(true)
                 .append(true)
-                .write(true)
                 .open(&log_path)?;
             let stderr_file = OpenOptions::new()
                 .create(true)
                 .append(true)
-                .write(true)
                 .open(&log_path)?;
 
-            match run_command_background(
-                program,
-                &args.to_vec(),
-                &ctx.project_dir,
-                stdout_file,
-                stderr_file,
-            )
-            .await
+            match run_command_background(program, args, &ctx.project_dir, stdout_file, stderr_file)
+                .await
             {
                 Ok(_child) => {
-                    logger
-                        .info(&format!("Background command launched",))
-                        .await?;
+                    logger.info("Background command launched").await?;
                 }
                 Err(e) => {
                     logger
-                        .error(&format!("Failed to launch background command: {}", e))
+                        .error(&format!("Failed to launch background command: {e}"))
                         .await?;
                     return Err(e);
                 }
@@ -99,7 +89,7 @@ pub async fn run_update(ctx: &WatchContext) -> Result<(), anyhow::Error> {
                 }
                 Err(e) => {
                     logger
-                        .error(&format!("Command error or timeout: {}", e))
+                        .error(&format!("Command error or timeout: {e}"))
                         .await?;
                     return Err(e);
                 }

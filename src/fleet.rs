@@ -1,9 +1,6 @@
 use clap::Parser;
 
-use crate::{
-    app::handle_watch,
-    cli::Cli,
-};
+use crate::{app::handle_watch, cli::Cli};
 
 mod app;
 mod cli;

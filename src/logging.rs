@@ -32,14 +32,14 @@ impl Logger {
     }
 
     pub async fn info(&self, msg: &str) -> anyhow::Result<()> {
-        self.log(&format!("INFO: {}", msg)).await
+        self.log(&format!("INFO: {msg}")).await
     }
 
     pub async fn warning(&self, msg: &str) -> anyhow::Result<()> {
-        self.log(&format!("WARNING: {}", msg)).await
+        self.log(&format!("WARNING: {msg}")).await
     }
 
     pub async fn error(&self, msg: &str) -> anyhow::Result<()> {
-        self.log(&format!("ERROR: {}", msg)).await
+        self.log(&format!("ERROR: {msg}")).await
     }
 }
