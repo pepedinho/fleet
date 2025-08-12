@@ -38,4 +38,4 @@ jobs:
         run: chmod +x ./tests.sh
 
       - name: Run tests
-        run: ./test.sh
+        run: ./tests.sh
