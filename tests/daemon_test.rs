@@ -12,7 +12,6 @@ fn test_id_generation() {
     assert_eq!(res.len(), 12);
 }
 
-
 #[tokio::test]
 async fn test_log_basic() -> anyhow::Result<()> {
     let dir = temp_dir();
@@ -23,7 +22,7 @@ async fn test_log_basic() -> anyhow::Result<()> {
     let contents = fs::read_to_string(&file_path).await?;
     assert!(contents.contains("Hello World"));
 
-    Ok(())   
+    Ok(())
 }
 
 #[tokio::test]
