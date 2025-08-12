@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use crate::core::{
     manager::{start_socket_listener, supervisor_loop},
-    state::{init_watch_file, AppState}, watcher::WatchContext,
+    state::{AppState, init_watch_file},
+    watcher::WatchContext,
 };
 
 mod app;
@@ -13,7 +14,6 @@ mod exec;
 mod git;
 mod ipc;
 mod logging;
-
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

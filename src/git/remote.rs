@@ -13,23 +13,23 @@ pub fn get_remote_branch_hash(url: &str, branch: &str) -> Result<String, Error> 
         println!("find ssh in key => {}", ssh_key_path.display());
 
         // Try default key locations (~/.ssh/id_rsa)
-        if allowed_types.contains(git2::CredentialType::SSH_KEY) {
-            if let Ok(cred) = Cred::ssh_key(username, None, &ssh_key_path, None) {
-                return Ok(cred);
-            }
+        if allowed_types.contains(git2::CredentialType::SSH_KEY)
+            && let Ok(cred) = Cred::ssh_key(username, None, &ssh_key_path, None)
+        {
+            return Ok(cred);
         }
         // Try default credentials
-        if allowed_types.contains(git2::CredentialType::DEFAULT) {
-            if let Ok(cred) = Cred::default() {
-                return Ok(cred);
-            }
+        if allowed_types.contains(git2::CredentialType::DEFAULT)
+            && let Ok(cred) = Cred::default()
+        {
+            return Ok(cred);
         }
 
         // Try ssh-agent
-        if allowed_types.contains(git2::CredentialType::SSH_KEY) {
-            if let Ok(cred) = Cred::ssh_key_from_agent(username) {
-                return Ok(cred);
-            }
+        if allowed_types.contains(git2::CredentialType::SSH_KEY)
+            && let Ok(cred) = Cred::ssh_key_from_agent(username)
+        {
+            return Ok(cred);
         }
 
         Err(git2::Error::from_str("No authentication methods available"))
@@ -39,7 +39,7 @@ pub fn get_remote_branch_hash(url: &str, branch: &str) -> Result<String, Error> 
     remote.connect_auth(git2::Direction::Fetch, Some(callbacks), None)?;
 
     let refs = remote.list()?;
-    let ref_to_find = format!("refs/heads/{}", branch);
+    let ref_to_find = format!("refs/heads/{branch}");
 
     for r in refs {
         if r.name() == ref_to_find {
@@ -47,8 +47,5 @@ pub fn get_remote_branch_hash(url: &str, branch: &str) -> Result<String, Error> 
         }
     }
 
-    Err(git2::Error::from_str(&format!(
-        "Branch {} not found",
-        branch
-    )))
+    Err(git2::Error::from_str(&format!("Branch {branch} not found")))
 }

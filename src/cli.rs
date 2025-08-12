@@ -33,5 +33,5 @@ pub enum Commands {
 
     Logs {
         id_or_name: Option<String>,
-    }
+    },
 }

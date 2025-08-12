@@ -22,7 +22,7 @@ fn test_build_watch_request_branch_none() -> Result<(), Box<dyn std::error::Erro
         DaemonRequest::AddWatch {
             project_dir: std::env::current_dir()?.to_string_lossy().into_owned(),
             branch: repo.branch.clone(),
-            repo: repo,
+            repo,
             update_cmds: config.update
         }
     );
@@ -47,7 +47,7 @@ fn test_build_watch_request_branch_some() -> Result<(), Box<dyn std::error::Erro
         DaemonRequest::AddWatch {
             project_dir: std::env::current_dir()?.to_string_lossy().into_owned(),
             branch: String::from("test"),
-            repo: repo,
+            repo,
             update_cmds: config.update
         }
     );
