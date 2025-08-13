@@ -19,23 +19,13 @@ Its goal is to make **continuous deployment and synchronization** easy without r
 ---
 
 ## Installation
-
-> **Note:** Installation scripts and daemonization setup are not yet included.  
-For now, compile and run manually.
-
 ```bash
 # Clone the repository
 git clone https://github.com/yourusername/fleet.git
 cd fleet
 
-# Build in release mode
-cargo build --release
-
-# Run the daemon manually
-./target/release/fleetd &
-
-# Use the CLI
-./target/release/fleet <command>
+# install fleet
+make install
 ```
 
 ---
