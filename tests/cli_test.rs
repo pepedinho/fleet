@@ -34,11 +34,11 @@ fn test_build_watch_request_branch_none() -> Result<(), Box<dyn std::error::Erro
 fn test_build_watch_request_branch_some() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli {
         command: cli::Commands::Watch {
-            branch: Some(String::from("test")),
+            branch: Some(String::from("tests")),
         },
     };
 
-    let repo = Repo::build(None)?;
+    let repo = Repo::build(Some("tests".to_string()))?;
     let config = load_config(Path::new("./fleet.yml"))?;
 
     let watch_req = build_watch_request(&cli, repo.clone())?;
@@ -46,7 +46,7 @@ fn test_build_watch_request_branch_some() -> Result<(), Box<dyn std::error::Erro
         watch_req,
         DaemonRequest::AddWatch {
             project_dir: std::env::current_dir()?.to_string_lossy().into_owned(),
-            branch: String::from("test"),
+            branch: String::from("tests"),
             repo,
             update_cmds: config.update
         }
