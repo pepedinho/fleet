@@ -24,8 +24,7 @@ install-service:
 
 uninstall: uninstall-service
 	@echo "🗑 Removing installed binaries..."
-	cargo uninstall $(PROJECT_NAME)
-	cargo uninstall $(SERVICE_NAME) || true
+	cargo uninstall fleet || true
 	@echo "🗑 Removing configuration..."
 	rm -rf $(CONFIG_DIR)
 	@echo "✅ Uninstalled successfully."
