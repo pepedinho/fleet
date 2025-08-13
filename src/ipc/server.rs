@@ -2,7 +2,7 @@
 use std::sync::Arc;
 
 use crate::{
-    config::parser::{ProjectConfig, UpdateCommand},
+    config::parser::{ProjectConfig, UpdateSection},
     core::{
         id::short_id,
         state::{AppState, add_watch, get_id_by_name, get_name_by_id, remove_watch_by_id},
@@ -27,7 +27,7 @@ pub enum DaemonRequest {
         project_dir: String,
         branch: String,
         repo: Repo,
-        update_cmds: Vec<UpdateCommand>,
+        update: UpdateSection,
     },
 
     #[serde(rename = "stop_watch")]
@@ -99,8 +99,8 @@ pub async fn handle_request(
             project_dir,
             branch,
             repo,
-            update_cmds,
-        } => handle_add_watch(state, project_dir, branch, repo, update_cmds).await,
+            update,
+        } => handle_add_watch(state, project_dir, branch, repo, update).await,
 
         DaemonRequest::StopWatch { id } => handle_stop_watch(state, id).await,
 
@@ -124,7 +124,7 @@ async fn handle_add_watch(
     project_dir: String,
     branch: String,
     mut repo: Repo,
-    update_cmds: Vec<UpdateCommand>,
+    update: UpdateSection,
 ) -> DaemonResponse {
     let mut guard = state.watches.write().await;
     let existing_id = guard
@@ -143,7 +143,7 @@ async fn handle_add_watch(
         branch,
         repo,
         config: ProjectConfig {
-            update: update_cmds,
+            update,
             ..Default::default()
         },
         project_dir,
