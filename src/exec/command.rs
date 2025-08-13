@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 
 use anyhow::Result;
 use tokio::{
@@ -37,14 +37,22 @@ pub async fn run_command_with_timeout(
     args: &[String],
     current_dir: &str,
     timeout_secs: u64,
+    env: Option<HashMap<String, String>>,
 ) -> Result<CommandOutput> {
     // Lance le process avec pipes pour stdout et stderr
-    let mut child = Command::new(program)
-        .args(args)
+    let mut cmd = Command::new(program);
+
+    cmd.args(args)
         .current_dir(current_dir)
         .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .spawn()?;
+        .stderr(std::process::Stdio::piped());
+
+    if let Some(vars) = env {
+        for (k, v) in vars {
+            cmd.env(k, v);
+        }
+    }
+    let mut child = cmd.spawn()?;
 
     let stdout = child.stdout.take().expect("stdout should be capture");
     let stderr = child.stderr.take().expect("stderr should be capture");
@@ -97,17 +105,25 @@ pub async fn run_command_background(
     current_dir: &str,
     stdout_file: std::fs::File,
     stderr_file: std::fs::File,
+    env: Option<HashMap<String, String>>,
 ) -> Result<Child> {
     use std::process::Stdio;
     let stdout_stdio = Stdio::from(stdout_file);
     let stderr_stdio = Stdio::from(stderr_file);
 
-    let child = Command::new(program)
-        .args(args)
+    let mut cmd = Command::new(program);
+    cmd.args(args)
         .current_dir(current_dir)
         .stdout(stdout_stdio)
-        .stderr(stderr_stdio)
-        .spawn()?;
+        .stderr(stderr_stdio);
+
+    if let Some(vars) = env {
+        for (k, v) in vars {
+            cmd.env(k, v);
+        }
+    }
+
+    let child = cmd.spawn()?;
 
     Ok(child)
 }

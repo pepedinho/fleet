@@ -54,7 +54,7 @@ fn build_add_watch_request(
         project_dir: std::env::current_dir()?.to_string_lossy().into_owned(),
         branch,
         repo,
-        update_cmds: config.update.clone(),
+        update: config.update.clone(),
     })
 }
 
