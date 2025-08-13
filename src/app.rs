@@ -13,7 +13,7 @@ use crate::{
 /// Handles watch-related CLI commands by delegating to subfunctions
 /// that build the appropriate [`DaemonRequest`].
 pub async fn handle_watch(cli: &Cli) -> Result<()> {
-    let repo = Repo::build()?;
+    let repo = Repo::build(None)?;
 
     let watch_req = build_watch_request(cli, repo)?;
     send_watch_request(watch_req).await?;
@@ -33,7 +33,10 @@ pub fn build_watch_request(cli: &Cli, repo: Repo) -> Result<DaemonRequest> {
 }
 
 /// Builds an [`AddWatch`] request after validating configuration.
-fn build_add_watch_request(branch_cli: Option<String>, repo: Repo) -> Result<DaemonRequest> {
+fn build_add_watch_request(
+    branch_cli: Option<String>,
+    default_repo: Repo,
+) -> Result<DaemonRequest> {
     let config_path = Path::new("./fleet.yml");
     if !config_path.exists() {
         return Err(anyhow::anyhow!(
@@ -44,7 +47,8 @@ fn build_add_watch_request(branch_cli: Option<String>, repo: Repo) -> Result<Dae
     let config = load_config(config_path)?;
     let branch = branch_cli
         .or(config.branch.clone())
-        .unwrap_or(repo.branch.clone());
+        .unwrap_or(default_repo.branch.clone());
+    let repo = Repo::build(Some(branch.clone()))?;
 
     Ok(DaemonRequest::AddWatch {
         project_dir: std::env::current_dir()?.to_string_lossy().into_owned(),

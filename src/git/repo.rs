@@ -10,22 +10,34 @@ pub struct Repo {
 }
 
 impl Repo {
-    pub fn build() -> Result<Self, Error> {
+    pub fn build(branch_name: Option<String>) -> Result<Self, Error> {
         let repo = Repository::open(".")?;
 
-        let head = repo.head()?;
-        let branch = head
-            .shorthand()
-            .ok_or_else(|| Error::from_str("Failed to read branch name"))?
-            .to_string();
+        let (branch, commit) = if let Some(ref name) = branch_name {
+            let branch_ref = repo.find_branch(name, git2::BranchType::Local)?;
+            let target = branch_ref.get().peel_to_commit()?;
+
+            let branch_name = branch_ref
+                .name()?
+                .ok_or_else(|| Error::from_str("Failed to read branch name"))?
+                .to_string();
+
+            (branch_name, target.id().to_string())
+        } else {
+            let head = repo.head()?;
+            let branch = head
+                .shorthand()
+                .ok_or_else(|| Error::from_str("Failed to read branch name"))?
+                .to_string();
+            let commit_id = head.peel_to_commit()?.id().to_string();
+            (branch, commit_id)
+        };
 
         let remote = repo
             .find_remote("origin")?
             .url()
             .ok_or_else(|| Error::from_str("Remote URL 'origin' not found"))?
             .to_string();
-
-        let commit = head.peel_to_commit()?.id().to_string();
 
         let name = remote
             .rsplit('/')
