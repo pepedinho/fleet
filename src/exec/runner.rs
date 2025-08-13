@@ -15,7 +15,7 @@ pub async fn run_update(ctx: &WatchContext) -> Result<(), anyhow::Error> {
     let logger = Logger::new(&ctx.log_path()).await?;
 
     logger.info("Update started").await?;
-    let update_commands = &ctx.config.update;
+    let update_commands = &ctx.config.update.steps;
 
     if update_commands.is_empty() {
         logger
@@ -38,6 +38,7 @@ pub async fn run_update(ctx: &WatchContext) -> Result<(), anyhow::Error> {
 
         let program = &parts[0];
         let args = &parts[1..];
+        let env = ctx.config.update.env.clone();
 
         if cmd_line.blocking {
             //blocking command => run in background and forget
@@ -55,8 +56,15 @@ pub async fn run_update(ctx: &WatchContext) -> Result<(), anyhow::Error> {
                 .append(true)
                 .open(&log_path)?;
 
-            match run_command_background(program, args, &ctx.project_dir, stdout_file, stderr_file)
-                .await
+            match run_command_background(
+                program,
+                args,
+                &ctx.project_dir,
+                stdout_file,
+                stderr_file,
+                env,
+            )
+            .await
             {
                 Ok(_child) => {
                     logger.info("Background command launched").await?;
@@ -72,7 +80,9 @@ pub async fn run_update(ctx: &WatchContext) -> Result<(), anyhow::Error> {
             logger.info("Background command launched").await?;
         } else {
             //classic command w timeout
-            match run_command_with_timeout(program, args, &ctx.project_dir, default_timeout).await {
+            match run_command_with_timeout(program, args, &ctx.project_dir, default_timeout, env)
+                .await
+            {
                 Ok(output) => {
                     if output.status_code != Some(0) {
                         logger

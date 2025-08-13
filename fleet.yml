@@ -1,7 +1,13 @@
+ENV: &default_env
+  SECRET_TOKEN: $
+  TEST_KEY: "oui"
+
 update:
-  - cmd: echo "oui je test"
-  - cmd: ping google.com
-    blocking: true
+  env: *default_env
+  steps: 
+    - cmd: env
+    - cmd: ping google.com
+      blocking: true
 
 on_confliot:
   - echo "un conflit est survenu"
