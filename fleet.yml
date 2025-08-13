@@ -1,11 +1,11 @@
 ENV: &default_env
   SECRET_TOKEN: $
-  TEST_KEY: "oui"
+  TEST_KEY: "non"
 
 update:
   env: *default_env
   steps: 
-    - cmd: echo $SECRET_TOKEN
+    - cmd: env
     - cmd: ping google.com
       blocking: true
 
