@@ -1,6 +1,6 @@
 ENV: &default_env
   SECRET_TOKEN: $
-  TEST_KEY: "non"
+  TEST_KEY: "oui"
 
 update:
   env: *default_env
