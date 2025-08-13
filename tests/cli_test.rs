@@ -13,7 +13,7 @@ fn test_build_watch_request_branch_none() -> Result<(), Box<dyn std::error::Erro
         command: cli::Commands::Watch { branch: None },
     };
 
-    let repo = Repo::build()?;
+    let repo = Repo::build(None)?;
     let config = load_config(Path::new("./fleet.yml"))?;
 
     let watch_req = build_watch_request(&cli, repo.clone())?;
@@ -38,7 +38,7 @@ fn test_build_watch_request_branch_some() -> Result<(), Box<dyn std::error::Erro
         },
     };
 
-    let repo = Repo::build()?;
+    let repo = Repo::build(None)?;
     let config = load_config(Path::new("./fleet.yml"))?;
 
     let watch_req = build_watch_request(&cli, repo.clone())?;
