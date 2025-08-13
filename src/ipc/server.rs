@@ -192,7 +192,7 @@ async fn handle_stop_watch(state: Arc<AppState>, id: String) -> DaemonResponse {
 }
 
 /// Run a watch by ID if it exists in the application state.
-async fn handle_up_watch(state: Arc<AppState>, id: String) -> DaemonResponse {
+pub async fn handle_up_watch(state: Arc<AppState>, id: String) -> DaemonResponse {
     match async {
         let mut guard = state.watches.write().await;
         if let Some(w) = guard.get_mut(&id) {
@@ -211,7 +211,7 @@ async fn handle_up_watch(state: Arc<AppState>, id: String) -> DaemonResponse {
 }
 
 /// Rm a watch by ID if it exists in the application state.
-async fn handle_rm_watch(state: Arc<AppState>, id: String) -> DaemonResponse {
+pub async fn handle_rm_watch(state: Arc<AppState>, id: String) -> DaemonResponse {
     match async {
         let mut guard = state.watches.write().await;
         if let Some(w) = guard.remove(&id) {
@@ -229,7 +229,7 @@ async fn handle_rm_watch(state: Arc<AppState>, id: String) -> DaemonResponse {
 }
 
 /// Returns a list of all current watches as a [`DaemonResponse::ListWatches`].
-async fn handle_list_watches(state: Arc<AppState>, all: bool) -> DaemonResponse {
+pub async fn handle_list_watches(state: Arc<AppState>, all: bool) -> DaemonResponse {
     match async {
         let guard = state.watches.read().await;
         let result = guard
