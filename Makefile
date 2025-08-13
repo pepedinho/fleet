@@ -1,4 +1,3 @@
-# Nom du projet
 PROJECT_NAME=fleet
 SERVICE_NAME=fleetd
 CARGO_BIN_DIR=$(HOME)/.cargo/bin
