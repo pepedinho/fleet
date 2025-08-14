@@ -16,7 +16,7 @@ fn test_build_watch_request_branch_none() -> Result<(), Box<dyn std::error::Erro
     let repo = Repo::build(None)?;
     let config = load_config(Path::new("./fleet.yml"))?;
 
-    let watch_req = build_watch_request(&cli, repo.clone())?;
+    let watch_req = build_watch_request(&cli)?;
     assert_eq!(
         watch_req,
         DaemonRequest::AddWatch {
@@ -41,7 +41,7 @@ fn test_build_watch_request_branch_some() -> Result<(), Box<dyn std::error::Erro
 
     let config = load_config(Path::new("./fleet.yml"))?;
 
-    let watch_req = build_watch_request(&cli, repo.clone())?;
+    let watch_req = build_watch_request(&cli)?;
     assert_eq!(
         watch_req,
         DaemonRequest::AddWatch {
