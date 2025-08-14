@@ -123,14 +123,14 @@ async fn test_handle_up_watch_existing() -> anyhow::Result<()> {
 
     let mut map = HashMap::new();
     let ctx = WatchContext {
-        paused: true, // on part d'un état "pause"
+        paused: true,
         project_dir: "dir".to_string(),
         branch: "main".to_string(),
         repo: Repo {
             branch: "main".to_string(),
             last_commit: "abc".to_string(),
             name: "name".to_string(),
-            remote: "".to_string(),
+            remote: "git://github.com/pepedinho/fleet.git".to_string(),
         },
         id: id.clone(),
         config: ProjectConfig::default(),
@@ -219,7 +219,7 @@ async fn test_handle_list_watches_existing() -> anyhow::Result<()> {
                 branch: "main".to_string(),
                 last_commit: "abc".to_string(),
                 name: "name".to_string(),
-                remote: "".to_string(),
+                remote: "git://github.com/pepedinho/fleet.git".to_string(),
             },
             id: "watch1".to_string(),
             config: ProjectConfig::default(),
