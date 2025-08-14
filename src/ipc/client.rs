@@ -47,17 +47,13 @@ fn handle_daemon_response(response: DaemonResponse) {
 
 /// Prints a formatted table of active watches.
 fn print_watches_table(watches: &[WatchInfo]) {
-    println!("📋 Currently watching {} project(s):\n", watches.len());
-
     println!(
-        "{:<15} {:<20} {:<12} {:<12} {:<40} {:<30}",
-        "Project ID", "Name", "Branch", "Commit", "Remote URL", "Project Dir"
+        "{:<13} {:<10} {:<13} {:<12} {:<20} {:<30}",
+        "PROJECT ID", "NAME", "BRANCH", "COMMIT", "REMOTE URL", "DIR"
     );
-    println!("{}", "-".repeat(130));
-
     for w in watches {
         println!(
-            "{:<15} {:<20} {:<12} {:<12} {:<40} {:<30}",
+            "{:<13} {:<10} {:<13} {:<12} {:<20} {:<30}",
             w.id.to_string(),
             w.repo_name,
             w.branch,

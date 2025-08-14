@@ -9,6 +9,7 @@ use crate::{
         watcher::WatchContext,
     },
     git::repo::Repo,
+    ipc::utiles::extract_repo_path,
     logging::Logger,
 };
 use anyhow::Result;
@@ -232,28 +233,29 @@ pub async fn handle_rm_watch(state: Arc<AppState>, id: String) -> DaemonResponse
 pub async fn handle_list_watches(state: Arc<AppState>, all: bool) -> DaemonResponse {
     match async {
         let guard = state.watches.read().await;
-        let result = guard
+        let result: Result<Vec<WatchInfo>, anyhow::Error> = guard
             .iter()
             .filter(|(_, ctx)| all || !ctx.paused) // if all = true everything pass, else only if paused is false they can pass
             .map(|(id, ctx)| {
                 let short_commit = ctx.repo.last_commit.chars().take(8).collect::<String>();
-                let short_url = if ctx.repo.remote.len() > 40 {
-                    format!("{}...", &ctx.repo.remote[..37])
+                let short_url = extract_repo_path(&ctx.repo.remote)?;
+                let short_branch = if ctx.branch.len() > 12 {
+                    format!("{}...", &ctx.branch[..9])
                 } else {
-                    ctx.repo.remote.clone()
+                    ctx.branch.clone()
                 };
-                WatchInfo {
-                    branch: ctx.branch.clone(),
+                Ok(WatchInfo {
+                    branch: short_branch,
                     project_dir: ctx.project_dir.clone(),
                     short_commit,
                     short_url,
                     repo_name: ctx.repo.name.clone(),
                     id: id.clone(),
                     paused: ctx.paused,
-                }
+                })
             })
             .collect();
-        Ok::<_, anyhow::Error>(DaemonResponse::ListWatches(result))
+        Ok::<_, anyhow::Error>(DaemonResponse::ListWatches(result?))
     }
     .await
     {
