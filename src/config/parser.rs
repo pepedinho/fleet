@@ -49,7 +49,5 @@ pub fn load_config(path: &Path) -> Result<ProjectConfig> {
         }
     }
 
-    println!("config => {:?}", config);
-
     Ok(config)
 }
