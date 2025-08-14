@@ -35,11 +35,12 @@ pub fn extract_repo_path(remote: &str) -> Result<String> {
     }
 
     // 4) Cas sans schéma, forme "host/owner/repo(.git)"
-    if s.contains('/') && !s.contains(' ') {
-        if let Some(slash_idx) = s.find('/') {
-            let path = &s[slash_idx..];
-            return normalize_git_path(path);
-        }
+    if s.contains('/')
+        && !s.contains(' ')
+        && let Some(slash_idx) = s.find('/')
+    {
+        let path = &s[slash_idx..];
+        return normalize_git_path(path);
     }
 
     Err(anyhow::anyhow!("Failed to extract repo remote path"))
