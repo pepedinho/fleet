@@ -242,8 +242,13 @@ pub async fn handle_list_watches(state: Arc<AppState>, all: bool) -> DaemonRespo
                 } else {
                     ctx.repo.remote.clone()
                 };
+                let short_branch = if ctx.branch.len() > 12 {
+                    format!("{}...", &ctx.branch[..9])
+                } else {
+                    ctx.branch.clone()
+                };
                 WatchInfo {
-                    branch: ctx.branch.clone(),
+                    branch: short_branch,
                     project_dir: ctx.project_dir.clone(),
                     short_commit,
                     short_url,
