@@ -66,26 +66,7 @@ fn display_logs(path: &str, follow: bool) -> Result<()> {
             let mut buffer = String::new();
             match reader.read_line(&mut buffer) {
                 Ok(0) => {
-            display_logs(&p, f).await?;
-        }
-    }
-    Ok(())
-}
-
-async fn display_logs(path: &str, follow: bool) -> Result<()> {
-    let log_path = PathBuf::from(path);
-    if !tokio::fs::metadata(&log_path).await.is_ok() {
-        return Err(anyhow::anyhow!("Failed to find log file : {}", path));
-    }
-    let file = File::open(log_path).await?;
-    let mut reader = BufReader::new(file);
-
-    match follow {
-        true => loop {
-            let mut buffer = String::new();
-            match reader.read_line(&mut buffer).await {
-                Ok(0) => {
-                    sleep(Duration::from_millis(200)).await;
+                    thread::sleep(Duration::from_millis(200));
                 }
                 Ok(_) => {
                     print!("{buffer}");
