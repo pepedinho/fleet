@@ -1,11 +1,9 @@
 #![allow(dead_code)]
-use std::fs::OpenOptions;
-
 use anyhow::Result;
 
 use crate::{
     core::watcher::WatchContext,
-    exec::command::{run_command_background, run_command_with_timeout},
+    exec::command::{exec_background, exec_timeout},
     logging::Logger,
 };
 
@@ -42,76 +40,61 @@ pub async fn run_update(ctx: &WatchContext) -> Result<(), anyhow::Error> {
 
         if program == "git" && args[0] == "pull" {
             println!("GIT PULL DETECTED");
-            panic!();
-        }
-        if cmd_line.blocking {
+            run_conflict_process(ctx).await?;
+            return Ok(());
+        } else if cmd_line.blocking {
             //blocking command => run in background and forget
-            logger
-                .info("Command marked as blocking: running in background without waiting")
-                .await?;
-            let log_path = ctx.log_path();
-
-            let stdout_file = OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(&log_path)?;
-            let stderr_file = OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(&log_path)?;
-
-            match run_command_background(
-                program,
-                args,
-                &ctx.project_dir,
-                stdout_file,
-                stderr_file,
-                env,
-            )
-            .await
-            {
-                Ok(_child) => {
-                    logger.info("Background command launched").await?;
-                }
-                Err(e) => {
-                    logger
-                        .error(&format!("Failed to launch background command: {e}"))
-                        .await?;
-                    return Err(e);
-                }
-            }
-
-            logger.info("Background command launched").await?;
+            exec_background(parts, ctx, &logger, env).await?;
         } else {
             //classic command w timeout
-            match run_command_with_timeout(program, args, &ctx.project_dir, default_timeout, env)
-                .await
-            {
-                Ok(output) => {
-                    if output.status_code != Some(0) {
-                        logger
-                            .error(&format!(
-                                "Command failed with exit code {:?}\nstdout:\n{}\nstderr:\n{}",
-                                output.status_code, output.stdout, output.stderr
-                            ))
-                            .await?;
-                        return Err(anyhow::anyhow!("Failed command: {}", cmd_line.cmd));
-                    }
-                    logger.info(&format!("stdout:\n{}", output.stdout)).await?;
-                    logger.info(&format!("stderr:\n{}", output.stderr)).await?;
-                    logger.info("Command succeeded").await?;
-                }
-                Err(e) => {
-                    logger
-                        .error(&format!("Command error or timeout: {e}"))
-                        .await?;
-                    return Err(e);
-                }
-            }
+            exec_timeout(parts, ctx, &logger, default_timeout, env).await?;
         }
     }
 
     logger.info("=== Update finished successfully ===").await?;
+
+    Ok(())
+}
+
+pub async fn run_conflict_process(ctx: &WatchContext) -> Result<(), anyhow::Error> {
+    let logger = Logger::new(&ctx.log_path()).await?;
+
+    logger.info("Conflict process started").await?;
+    let conflict_commands = &ctx.config.on_conflict.steps;
+
+    if conflict_commands.is_empty() {
+        logger
+            .warning("No command to execute (check your fleet.yml file)")
+            .await?;
+        return Ok(());
+    }
+
+    let default_timeout = ctx.config.timeout.unwrap_or(DEFAULT_TIMEOUT);
+
+    for (i, cmd_line) in conflict_commands.iter().enumerate() {
+        logger
+            .info(&format!("Executing command {} : {}", i + 1, cmd_line.cmd))
+            .await?;
+        let parts = shell_words::split(&cmd_line.cmd)?;
+        if parts.is_empty() {
+            logger.info("Empty command, ignore ...").await?;
+            continue;
+        }
+
+        let env = ctx.config.update.env.clone();
+
+        if cmd_line.blocking {
+            //blocking command => run in background and forget
+            exec_background(parts, ctx, &logger, env).await?;
+        } else {
+            //classic command w timeout
+            exec_timeout(parts, ctx, &logger, default_timeout, env).await?;
+        }
+    }
+
+    logger
+        .info("=== Conflit process finished successfully ===")
+        .await?;
 
     Ok(())
 }
