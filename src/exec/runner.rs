@@ -40,6 +40,10 @@ pub async fn run_update(ctx: &WatchContext) -> Result<(), anyhow::Error> {
         let args = &parts[1..];
         let env = ctx.config.update.env.clone();
 
+        if program == "git" && args[0] == "pull" {
+            println!("GIT PULL DETECTED");
+            panic!();
+        }
         if cmd_line.blocking {
             //blocking command => run in background and forget
             logger
