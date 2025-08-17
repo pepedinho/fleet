@@ -50,6 +50,7 @@ fn build_add_watch_request(branch_cli: Option<String>) -> Result<DaemonRequest> 
         branch,
         repo,
         update: config.update.clone(),
+        conflict: config.on_conflict.clone(),
     })
 }
 

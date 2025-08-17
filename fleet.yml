@@ -5,6 +5,7 @@ ENV: &default_env
 update:
   env: *default_env
   steps: 
+    - cmd: git pull
     - cmd: env
     - cmd: ping google.com
       blocking: true

@@ -24,6 +24,7 @@ fn test_build_watch_request_branch_none() -> Result<(), Box<dyn std::error::Erro
             branch: repo.branch.clone(),
             repo,
             update: config.update,
+            conflict: config.on_conflict,
         }
     );
 
@@ -49,6 +50,7 @@ fn test_build_watch_request_branch_some() -> Result<(), Box<dyn std::error::Erro
             branch: repo.branch.clone(),
             repo,
             update: config.update,
+            conflict: config.on_conflict,
         }
     );
 

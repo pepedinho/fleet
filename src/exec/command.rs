@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use std::{collections::HashMap, time::Duration};
+use std::{collections::HashMap, fs::OpenOptions, time::Duration};
 
 use anyhow::Result;
 use tokio::{
@@ -7,6 +7,8 @@ use tokio::{
     process::{Child, Command},
     time::timeout,
 };
+
+use crate::{core::watcher::WatchContext, logging::Logger};
 
 pub struct CommandOutput {
     pub stdout: String,
@@ -126,4 +128,85 @@ pub async fn run_command_background(
     let child = cmd.spawn()?;
 
     Ok(child)
+}
+
+pub async fn exec_timeout(
+    parts: Vec<String>,
+    ctx: &WatchContext,
+    logger: &Logger,
+    timeout: u64,
+    env: Option<HashMap<String, String>>,
+) -> Result<(), anyhow::Error> {
+    let program = &parts[0];
+    let args = &parts[1..];
+    match run_command_with_timeout(program, args, &ctx.project_dir, timeout, env).await {
+        Ok(output) => {
+            if output.status_code != Some(0) {
+                logger
+                    .error(&format!(
+                        "Command failed with exit code {:?}\nstdout:\n{}\nstderr:\n{}",
+                        output.status_code, output.stdout, output.stderr
+                    ))
+                    .await?;
+                return Err(anyhow::anyhow!("Failed command: {:?}", parts));
+            }
+            logger.info(&format!("stdout:\n{}", output.stdout)).await?;
+            logger.info(&format!("stderr:\n{}", output.stderr)).await?;
+            logger.info("Command succeeded").await?;
+        }
+        Err(e) => {
+            logger
+                .error(&format!("Command error or timeout: {parts:?}"))
+                .await?;
+            return Err(e);
+        }
+    }
+    Ok(())
+}
+
+pub async fn exec_background(
+    parts: Vec<String>,
+    ctx: &WatchContext,
+    logger: &Logger,
+    env: Option<HashMap<String, String>>,
+) -> Result<(), anyhow::Error> {
+    let program = &parts[0];
+    let args = &parts[1..];
+    logger
+        .info("Command marked as blocking: running in background without waiting")
+        .await?;
+    let log_path = ctx.log_path();
+
+    let stdout_file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_path)?;
+    let stderr_file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_path)?;
+
+    match run_command_background(
+        program,
+        args,
+        &ctx.project_dir,
+        stdout_file,
+        stderr_file,
+        env,
+    )
+    .await
+    {
+        Ok(_child) => {
+            logger.info("Background command launched").await?;
+        }
+        Err(e) => {
+            logger
+                .error(&format!("Failed to launch background command: {e}"))
+                .await?;
+            return Err(e);
+        }
+    }
+
+    logger.info("Background command launched").await?;
+    Ok(())
 }
