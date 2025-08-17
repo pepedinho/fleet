@@ -16,7 +16,7 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use tokio::{
     fs::{File, OpenOptions},
-    io::{AsyncReadExt, AsyncWriteExt, BufReader, WriteHalf},
+    io::{AsyncWriteExt, WriteHalf},
     net::UnixStream,
 };
 
@@ -44,7 +44,7 @@ pub enum DaemonRequest {
     ListWatches { all: bool },
 
     #[serde(rename = "logs_watch")]
-    LogsWatches { id: String },
+    LogsWatches { id: String, f: bool },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -63,6 +63,7 @@ pub enum DaemonResponse {
     Success(String),
     Error(String),
     ListWatches(Vec<WatchInfo>),
+    LogWatch(String, bool),
 }
 
 pub async fn get_log_file(ctx: &WatchContext) -> Result<File> {
@@ -79,11 +80,14 @@ pub async fn get_log_file(ctx: &WatchContext) -> Result<File> {
 async fn get_logs_by_id(id: &str) -> Result<String> {
     let log_path = WatchContext::log_path_by_id(id);
 
-    let file = File::open(&log_path).await?;
-    let mut reader = BufReader::new(file);
-    let mut contents = String::new();
-    reader.read_to_string(&mut contents).await?;
-    Ok(contents)
+    // let file = File::open(&log_path).await?;
+    // let mut reader = BufReader::new(file);
+    // let mut contents = String::new();
+    // reader.read_to_string(&mut contents).await?;
+    match log_path.to_str() {
+        Some(p) => Ok(String::from(p)),
+        None => Err(anyhow::anyhow!("Failed to find log path")),
+    }
 }
 
 /// Handles a daemon request and sends the resulting [`DaemonResponse`] back to the client.
@@ -111,7 +115,7 @@ pub async fn handle_request(
 
         DaemonRequest::ListWatches { all } => handle_list_watches(state, all).await,
 
-        DaemonRequest::LogsWatches { id } => handle_logs_watches(id).await,
+        DaemonRequest::LogsWatches { id, f } => handle_logs_watches(id, f).await,
     };
 
     send_response(stream, response).await?;
@@ -267,7 +271,7 @@ pub async fn handle_list_watches(state: Arc<AppState>, all: bool) -> DaemonRespo
 /// Fetches logs for a given watch by ID or name.
 /// If the watch is not found, sends an error directly to the client.
 /// Returns `None` if an error was already sent to the stream.
-async fn handle_logs_watches(id: String) -> DaemonResponse {
+async fn handle_logs_watches(id: String, follow: bool) -> DaemonResponse {
     match async {
         let id = match get_name_by_id(&id).await {
             Ok(Some(_)) => id,
@@ -277,7 +281,7 @@ async fn handle_logs_watches(id: String) -> DaemonResponse {
             },
         };
         let logs = get_logs_by_id(&id).await?;
-        Ok::<_, anyhow::Error>(DaemonResponse::Success(logs))
+        Ok::<_, anyhow::Error>(DaemonResponse::LogWatch(logs, follow))
     }
     .await
     {

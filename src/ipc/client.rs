@@ -1,3 +1,7 @@
+use std::{fs::File, io::Read, path::PathBuf, thread, time::Duration};
+
+use anyhow::Result;
+use std::io::BufRead;
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     net::UnixStream,
@@ -15,7 +19,7 @@ pub async fn send_watch_request(req: DaemonRequest) -> Result<(), anyhow::Error>
     stream.flush().await?;
 
     let response = read_daemon_response(stream).await?;
-    handle_daemon_response(response);
+    handle_daemon_response(response)?;
 
     Ok(())
 }
@@ -31,7 +35,7 @@ async fn read_daemon_response(stream: UnixStream) -> Result<DaemonResponse, anyh
 
 /// Processes the [`DaemonResponse`] by printing success, error,
 /// or listing watches in a formatted table.
-fn handle_daemon_response(response: DaemonResponse) {
+fn handle_daemon_response(response: DaemonResponse) -> Result<()> {
     match response {
         DaemonResponse::Success(msg) => {
             println!("✅ {msg}");
@@ -41,6 +45,40 @@ fn handle_daemon_response(response: DaemonResponse) {
         }
         DaemonResponse::ListWatches(watches) => {
             print_watches_table(&watches);
+        }
+        DaemonResponse::LogWatch(p, f) => {
+            display_logs(&p, f)?;
+        }
+    }
+    Ok(())
+}
+
+fn display_logs(path: &str, follow: bool) -> Result<()> {
+    let log_path = PathBuf::from(path);
+    if !log_path.exists() {
+        return Err(anyhow::anyhow!("Failed to find log file : {}", path));
+    }
+    let file = File::open(log_path)?;
+    let mut reader = std::io::BufReader::new(file);
+
+    match follow {
+        true => loop {
+            let mut buffer = String::new();
+            match reader.read_line(&mut buffer) {
+                Ok(0) => {
+                    thread::sleep(Duration::from_millis(200));
+                }
+                Ok(_) => {
+                    print!("{buffer}");
+                }
+                Err(e) => return Err(anyhow::anyhow!("Failed to read: {e}")),
+            }
+        },
+        false => {
+            let mut buffer = String::new();
+            reader.read_to_string(&mut buffer)?;
+            println!("{buffer}");
+            Ok(())
         }
     }
 }

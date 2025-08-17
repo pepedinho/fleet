@@ -23,7 +23,7 @@ pub fn build_watch_request(cli: &Cli) -> Result<DaemonRequest> {
     match &cli.command {
         Commands::Watch { branch } => build_add_watch_request(branch.clone()),
         Commands::Ps { all } => Ok(DaemonRequest::ListWatches { all: *all }),
-        Commands::Logs { id_or_name } => build_logs_request(id_or_name),
+        Commands::Logs { id_or_name, follow } => build_logs_request(id_or_name, *follow),
         Commands::Stop { id } => Ok(DaemonRequest::StopWatch { id: id.to_string() }),
         Commands::Up { id } => Ok(DaemonRequest::UpWatch { id: id.to_string() }),
         Commands::Rm { id } => Ok(DaemonRequest::RmWatch { id: id.to_string() }),
@@ -54,12 +54,18 @@ fn build_add_watch_request(branch_cli: Option<String>) -> Result<DaemonRequest> 
 }
 
 /// Builds a [`LogsWatches`] request from CLI or repository defaults.
-fn build_logs_request(id_or_name: &Option<String>) -> Result<DaemonRequest> {
+fn build_logs_request(id_or_name: &Option<String>, follow: bool) -> Result<DaemonRequest> {
     match id_or_name {
-        Some(s) => Ok(DaemonRequest::LogsWatches { id: s.to_string() }),
+        Some(s) => Ok(DaemonRequest::LogsWatches {
+            id: s.to_string(),
+            f: follow,
+        }),
         None => {
             let repo = Repo::build(None)?;
-            Ok(DaemonRequest::LogsWatches { id: repo.name })
+            Ok(DaemonRequest::LogsWatches {
+                id: repo.name,
+                f: follow,
+            })
         }
     }
 }
