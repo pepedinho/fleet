@@ -6,6 +6,7 @@ use dirs::home_dir;
 use serde::{Deserialize, Serialize};
 use tokio::fs;
 
+#[allow(unused_imports)]
 use crate::{
     config::parser::ProjectConfig,
     git::{remote::get_remote_branch_hash, repo::Repo},
@@ -60,16 +61,20 @@ impl WatchContext {
 }
 
 pub async fn watch_once(ctx: &WatchContext) -> Result<Option<String>, anyhow::Error> {
-    let remote_hash = get_remote_branch_hash(&ctx.repo.remote, &ctx.branch)?;
+    #[cfg(not(feature = "force_commit"))]
+    {
+        println!("JE RENTRE ICI");
+        let remote_hash = get_remote_branch_hash(&ctx.repo.remote, &ctx.branch)?;
 
-    if remote_hash != ctx.repo.last_commit {
-        println!(
-            "new commit detected: {} -> {}",
-            ctx.repo.last_commit, remote_hash
-        );
-        // run_update(ctx).await?;
-        // ctx.repo.last_commit = String::from(remote_hash);
-        return Ok(Some(remote_hash));
+        if remote_hash != ctx.repo.last_commit {
+            println!(
+                "new commit detected: {} -> {}",
+                ctx.repo.last_commit, remote_hash
+            );
+            return Ok(Some(remote_hash));
+        }
+        return Ok(None);
     }
-    Ok(None)
+    #[cfg(feature = "force_commit")]
+    return Ok(Some(ctx.repo.last_commit.clone()));
 }
