@@ -32,6 +32,8 @@ pub enum Commands {
     },
 
     Logs {
+        #[arg(short = 'f', long)]
+        follow: bool,
         id_or_name: Option<String>,
     },
 }
