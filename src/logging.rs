@@ -8,6 +8,7 @@ use tokio::{io::AsyncWriteExt, sync::Mutex};
 #[derive(Clone)]
 pub struct Logger {
     file: Arc<Mutex<tokio::fs::File>>,
+    path: String,
 }
 
 impl Logger {
@@ -19,6 +20,7 @@ impl Logger {
             .await?;
         Ok(Self {
             file: Arc::new(Mutex::new(file)),
+            path: String::from(path.to_str().unwrap_or("")),
         })
     }
 
@@ -41,5 +43,13 @@ impl Logger {
 
     pub async fn error(&self, msg: &str) -> anyhow::Result<()> {
         self.log(&format!("ERROR: {msg}")).await
+    }
+
+    pub fn get_path(&self) -> Result<String, anyhow::Error> {
+        if self.path.is_empty() {
+            Err(anyhow::anyhow!("Failed to find log path"))
+        } else {
+            Ok(self.path.clone())
+        }
     }
 }

@@ -58,7 +58,7 @@ async fn collect_updates(state: &Arc<AppState>) -> Vec<(String, String)> {
                 println!("[{id}] ✔ OK");
                 to_update.push((id.clone(), new_commit));
             }
-            Ok(None) => println!("[{id}] ✔ No change"),
+            Ok(None) => {}
             Err(e) => eprintln!("[{id}] ❌ Watch failed: {e}"),
         }
     }
@@ -112,7 +112,6 @@ pub async fn start_socket_listener(state: Arc<AppState>) -> anyhow::Result<()> {
                     if let Err(e) = handle_request(req, state, &mut write_half).await {
                         eprintln!("❌ Request handling failed: {e}");
                     }
-                    println!("oui");
                 }
                 Err(e) => eprintln!("❌ JSON parsing error: {e}"),
             }
