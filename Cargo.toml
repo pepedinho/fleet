@@ -26,13 +26,15 @@ force_conflict = ["force_commit"]
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1", features = ["full"] }
 serde_yaml = "0.9"
 serde_json = "1.0"
 git2 = "0.18"
-tokio = { version = "1", features = ["full"] }
 rand = "0.8"
 anyhow = "1.0"
 shell-words = "1.1"
 chrono = "0.4"
 dirs = "6.0.0"
 hex = "0.4"
+bollard = "*"
+futures-util = "0.3.31"
