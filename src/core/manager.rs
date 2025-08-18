@@ -28,11 +28,14 @@ pub async fn supervisor_loop(state: Arc<AppState>, interval_secs: u64) {
         for (id, new_commit) in to_update {
             update_commit(&state, &id, new_commit.clone()).await;
             if let Some(ctx) = get_watch_ctx(&state, &id).await {
-                if run_update(&ctx).await.is_ok() {
-                    println!("[{id}] ✅ Update succeeded");
-                    dirty = true;
-                } else {
-                    eprintln!("[{id}] ❌ Update failed");
+                match run_update(&ctx).await {
+                    Ok(_) => {
+                        println!("[{id}] ✅ Update succeeded");
+                        dirty = true;
+                    }
+                    Err(e) => {
+                        eprintln!("[{id}] ❌ Update failed => {e}");
+                    }
                 }
             }
         }

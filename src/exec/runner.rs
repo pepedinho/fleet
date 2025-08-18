@@ -1,9 +1,14 @@
 #![allow(dead_code)]
+use std::collections::HashMap;
+
 use anyhow::Result;
 
 use crate::{
     core::watcher::WatchContext,
-    exec::command::{exec_background, exec_timeout},
+    exec::{
+        command::{exec_background, exec_timeout},
+        container::contain_cmd,
+    },
     logging::Logger,
 };
 
@@ -35,36 +40,83 @@ pub async fn run_update(ctx: &WatchContext) -> Result<(), anyhow::Error> {
         }
 
         let env = ctx.config.update.env.clone();
-        let program = &parts[0];
-        let args = &parts[1..];
+        let log_path = logger.get_path()?;
 
-        if cmd_line.blocking {
-            //blocking command => run in background and forget
-            match exec_background(parts.clone(), ctx, &logger, env).await {
-                Ok(_) => {}
-                Err(_e) if program == "git" && args[0] == "pull" => {
-                    run_conflict_process(ctx).await?;
-                }
-                Err(e) => {
-                    logger.error(&format!("Failed: {e}")).await?;
-                }
-            };
+        if cmd_line.container.is_some() {
+            let image = cmd_line.container.clone().unwrap();
+            if cmd_line.blocking {
+                //blocking command => run in background and forget
+                // background_process(ctx, parts, &logger, env).await?;
+                contain_cmd(
+                    &image,
+                    parts,
+                    env,
+                    &ctx.project_dir,
+                    &log_path,
+                    &logger,
+                    None,
+                )
+                .await?;
+            } else {
+                //classic command w timeout
+                contain_cmd(
+                    &image,
+                    parts,
+                    env,
+                    &ctx.project_dir,
+                    &log_path,
+                    &logger,
+                    Some(default_timeout),
+                )
+                .await?;
+                // timeout_process(ctx, parts, &logger, env, default_timeout).await?;
+            }
+        } else if cmd_line.blocking {
+            background_process(ctx, parts, &logger, env).await?;
         } else {
-            //classic command w timeout
-            match exec_timeout(parts.clone(), ctx, &logger, default_timeout, env).await {
-                Ok(_) => {}
-                Err(_e) if program == "git" && args[0] == "pull" => {
-                    run_conflict_process(ctx).await?;
-                }
-                Err(e) => {
-                    logger.error(&format!("Failed: {e}")).await?;
-                }
-            };
+            timeout_process(ctx, parts, &logger, env, default_timeout).await?;
         }
     }
 
     logger.info("=== Update finished successfully ===").await?;
 
+    Ok(())
+}
+
+async fn background_process(
+    ctx: &WatchContext,
+    parts: Vec<String>,
+    logger: &Logger,
+    env: Option<HashMap<String, String>>,
+) -> Result<(), anyhow::Error> {
+    match exec_background(parts.clone(), ctx, logger, env).await {
+        Ok(_) => {}
+        Err(_e) if parts[0] == "git" && parts[1] == "pull" => {
+            run_conflict_process(ctx).await?;
+        }
+        Err(e) => {
+            logger.error(&format!("Failed: {e}")).await?;
+        }
+    };
+    Ok(())
+}
+
+async fn timeout_process(
+    ctx: &WatchContext,
+    parts: Vec<String>,
+    logger: &Logger,
+    env: Option<HashMap<String, String>>,
+    default_timeout: u64,
+) -> Result<(), anyhow::Error> {
+    match exec_timeout(parts.clone(), ctx, logger, default_timeout, env).await {
+        Ok(_) => {}
+        Err(_e) if parts[0] == "git" && parts[1] == "pull" => {
+            run_conflict_process(ctx).await?;
+        }
+        Err(e) => {
+            logger.error(&format!("Failed: {e}")).await?;
+        }
+    };
     Ok(())
 }
 

@@ -5,10 +5,11 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct UpdateCommand {
-    #[serde(default)]
     pub cmd: String,
     #[serde(default)]
     pub blocking: bool,
+    #[serde(default)]
+    pub container: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]

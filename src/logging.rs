@@ -7,7 +7,7 @@ use tokio::{io::AsyncWriteExt, sync::Mutex};
 
 #[derive(Clone)]
 pub struct Logger {
-    file: Arc<Mutex<tokio::fs::File>>,
+    pub file: Arc<Mutex<tokio::fs::File>>,
     path: String,
 }
 
