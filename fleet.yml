@@ -5,13 +5,15 @@ ENV: &default_env
 update:
   env: *default_env
   steps: 
+    - cmd: git pull
     - cmd: env
     - cmd: ping google.com
       blocking: true
 
-on_confliot:
-  - echo "un conflit est survenu"
-  - git reset --hard origin/main
+on_conflict:
+  env: *default_env
+  steps: 
+  - cmd: echo "un conflit est survenu"
 
 post_update:
   - echo "update terminé"

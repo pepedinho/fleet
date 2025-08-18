@@ -12,7 +12,7 @@ pub struct UpdateCommand {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
-pub struct UpdateSection {
+pub struct CommandSection {
     #[serde(default)]
     pub env: Option<HashMap<String, String>>,
     pub steps: Vec<UpdateCommand>,
@@ -20,10 +20,10 @@ pub struct UpdateSection {
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct ProjectConfig {
-    pub update: UpdateSection,
+    pub update: CommandSection,
 
     #[serde(default)]
-    pub on_conflict: Vec<String>,
+    pub on_conflict: CommandSection,
 
     #[serde(default)]
     pub post_update: Vec<String>,

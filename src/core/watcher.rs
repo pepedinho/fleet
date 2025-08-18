@@ -63,7 +63,6 @@ impl WatchContext {
 pub async fn watch_once(ctx: &WatchContext) -> Result<Option<String>, anyhow::Error> {
     #[cfg(not(feature = "force_commit"))]
     {
-        println!("JE RENTRE ICI");
         let remote_hash = get_remote_branch_hash(&ctx.repo.remote, &ctx.branch)?;
 
         if remote_hash != ctx.repo.last_commit {
