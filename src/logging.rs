@@ -46,7 +46,7 @@ impl Logger {
     }
 
     pub fn get_path(&self) -> Result<String, anyhow::Error> {
-        if self.path == "" {
+        if self.path.is_empty() {
             Err(anyhow::anyhow!("Failed to find log path"))
         } else {
             Ok(self.path.clone())

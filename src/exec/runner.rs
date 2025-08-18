@@ -34,20 +34,32 @@ pub async fn run_update(ctx: &WatchContext) -> Result<(), anyhow::Error> {
             continue;
         }
 
+        let env = ctx.config.update.env.clone();
         let program = &parts[0];
         let args = &parts[1..];
-        let env = ctx.config.update.env.clone();
 
-        if program == "git" && args[0] == "pull" {
-            println!("GIT PULL DETECTED");
-            run_conflict_process(ctx).await?;
-            return Ok(());
-        } else if cmd_line.blocking {
+        if cmd_line.blocking {
             //blocking command => run in background and forget
-            exec_background(parts, ctx, &logger, env).await?;
+            match exec_background(parts.clone(), ctx, &logger, env).await {
+                Ok(_) => {}
+                Err(_e) if program == "git" && args[0] == "pull" => {
+                    run_conflict_process(ctx).await?;
+                }
+                Err(e) => {
+                    logger.error(&format!("Failed: {e}")).await?;
+                }
+            };
         } else {
             //classic command w timeout
-            exec_timeout(parts, ctx, &logger, default_timeout, env).await?;
+            match exec_timeout(parts.clone(), ctx, &logger, default_timeout, env).await {
+                Ok(_) => {}
+                Err(_e) if program == "git" && args[0] == "pull" => {
+                    run_conflict_process(ctx).await?;
+                }
+                Err(e) => {
+                    logger.error(&format!("Failed: {e}")).await?;
+                }
+            };
         }
     }
 

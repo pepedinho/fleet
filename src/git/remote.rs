@@ -10,7 +10,6 @@ pub fn get_remote_branch_hash(url: &str, branch: &str) -> Result<String, Error> 
         let ssh_key_path = home_dir()
             .map(|h| h.join(".ssh/id_rsa"))
             .expect("Failed to find HOME directory");
-        println!("find ssh in key => {}", ssh_key_path.display());
 
         // Try default key locations (~/.ssh/id_rsa)
         if allowed_types.contains(git2::CredentialType::SSH_KEY)

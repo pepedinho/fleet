@@ -28,9 +28,9 @@ pub enum DaemonRequest {
         project_dir: String,
         branch: String,
         // use Box (clippy)
-        repo: Repo,
-        update: CommandSection,
-        conflict: CommandSection,
+        repo: Box<Repo>,
+        update: Box<CommandSection>,
+        conflict: Box<CommandSection>,
     },
 
     #[serde(rename = "stop_watch")]
@@ -99,8 +99,6 @@ pub async fn handle_request(
     state: Arc<AppState>,
     stream: &mut WriteHalf<UnixStream>,
 ) -> Result<(), anyhow::Error> {
-    println!("treat the request");
-
     let response = match req {
         DaemonRequest::AddWatch {
             project_dir,
@@ -108,7 +106,7 @@ pub async fn handle_request(
             repo,
             update,
             conflict,
-        } => handle_add_watch(state, project_dir, branch, repo, update, conflict).await,
+        } => handle_add_watch(state, project_dir, branch, *repo, *update, *conflict).await,
 
         DaemonRequest::StopWatch { id } => handle_stop_watch(state, id).await,
 
