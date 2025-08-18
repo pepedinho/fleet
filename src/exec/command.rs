@@ -161,6 +161,10 @@ pub async fn exec_timeout(
             return Err(e);
         }
     }
+    if cfg!(all(feature = "force_conflict")) {
+        println!("conflict forced");
+        return Err(anyhow::anyhow!("Forced conflict via feature"));
+    }
     Ok(())
 }
 
@@ -208,5 +212,9 @@ pub async fn exec_background(
     }
 
     logger.info("Background command launched").await?;
+    if cfg!(all(feature = "force_conflict")) {
+        println!("conflict forced");
+        return Err(anyhow::anyhow!("Forced conflict via feature"));
+    }
     Ok(())
 }
