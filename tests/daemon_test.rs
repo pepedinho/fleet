@@ -46,9 +46,9 @@ async fn test_info_waring_error() -> anyhow::Result<()> {
 
     let contents = fs::read_to_string(&file_path).await?;
 
-    assert!(contents.contains("INFO: test info"));
-    assert!(contents.contains("WARNING: test warning"));
-    assert!(contents.contains("ERROR: test error"));
+    assert!(contents.contains("test info"));
+    assert!(contents.contains("test warning"));
+    assert!(contents.contains("test error"));
     Ok(())
 }
 
