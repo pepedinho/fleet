@@ -28,7 +28,7 @@ async fn test_log_basic() -> anyhow::Result<()> {
     let file_path = dir.join("test.log");
     let logger = Logger::new(&file_path).await?;
 
-    logger.log("Hello World").await?;
+    logger.info("Hello World").await?;
     let contents = fs::read_to_string(&file_path).await?;
     assert!(contents.contains("Hello World"));
 

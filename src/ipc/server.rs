@@ -27,6 +27,7 @@ pub enum DaemonRequest {
     AddWatch {
         project_dir: String,
         branch: String,
+        timeout: Option<u64>,
         // use Box (clippy)
         repo: Box<Repo>,
         update: Box<CommandSection>,
@@ -103,10 +104,22 @@ pub async fn handle_request(
         DaemonRequest::AddWatch {
             project_dir,
             branch,
+            timeout,
             repo,
             update,
             conflict,
-        } => handle_add_watch(state, project_dir, branch, *repo, *update, *conflict).await,
+        } => {
+            handle_add_watch(
+                state,
+                project_dir,
+                branch,
+                timeout,
+                *repo,
+                *update,
+                *conflict,
+            )
+            .await
+        }
 
         DaemonRequest::StopWatch { id } => handle_stop_watch(state, id).await,
 
@@ -129,6 +142,7 @@ async fn handle_add_watch(
     state: Arc<AppState>,
     project_dir: String,
     branch: String,
+    timeout: Option<u64>,
     mut repo: Repo,
     update: CommandSection,
     conflict: CommandSection,
@@ -152,6 +166,7 @@ async fn handle_add_watch(
         config: ProjectConfig {
             update,
             on_conflict: conflict,
+            timeout,
             ..Default::default()
         },
         project_dir,

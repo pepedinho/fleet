@@ -48,6 +48,7 @@ fn build_add_watch_request(branch_cli: Option<String>) -> Result<DaemonRequest> 
     Ok(DaemonRequest::AddWatch {
         project_dir: std::env::current_dir()?.to_string_lossy().into_owned(),
         branch,
+        timeout: config.timeout,
         repo: Box::new(repo),
         update: Box::new(config.update),
         conflict: Box::new(config.on_conflict),
