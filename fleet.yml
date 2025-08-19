@@ -2,11 +2,16 @@ ENV: &default_env
   SECRET_TOKEN: $
   TEST_KEY: "oui"
 
+timeout: 10
+
 update:
   env: *default_env
   steps: 
-    - cmd: git pull
-    - cmd: env
+    # - cmd: git pull
+    # - cmd: env
+    - cmd: echo "start to sleep"
+    - cmd: sleep 15
+      container: rust:1.88
     - cmd: ping google.com
       blocking: true
 
