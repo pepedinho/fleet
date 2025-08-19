@@ -113,9 +113,16 @@ pub async fn contain_cmd(
         // Timeout appliqué
         match timeout(Duration::from_secs(secs), logs_future).await {
             Ok(inner) => inner, // logs terminés normalement
-            Err(_) => Err(anyhow::anyhow!(
-                "Container execution timed out after {secs} seconds"
-            )),
+            Err(_) => {
+                logger
+                    .error(&format!(
+                        "Container execution timed out after {secs} seconds"
+                    ))
+                    .await?;
+                Err(anyhow::anyhow!(
+                    "Container execution timed out after {secs} seconds"
+                ))
+            }
         }
     } else {
         // Pas de timeout

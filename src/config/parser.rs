@@ -32,6 +32,7 @@ pub struct ProjectConfig {
     #[serde(default)]
     pub branch: Option<String>,
 
+    #[serde(default)]
     pub timeout: Option<u64>,
 }
 

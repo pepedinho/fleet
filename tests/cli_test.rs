@@ -22,6 +22,7 @@ fn test_build_watch_request_branch_none() -> Result<(), Box<dyn std::error::Erro
         DaemonRequest::AddWatch {
             project_dir: std::env::current_dir()?.to_string_lossy().into_owned(),
             branch: repo.branch.clone(),
+            timeout: config.timeout,
             repo: Box::new(repo),
             update: Box::new(config.update),
             conflict: Box::new(config.on_conflict),
@@ -48,6 +49,7 @@ fn test_build_watch_request_branch_some() -> Result<(), Box<dyn std::error::Erro
         DaemonRequest::AddWatch {
             project_dir: std::env::current_dir()?.to_string_lossy().into_owned(),
             branch: repo.branch.clone(),
+            timeout: config.timeout,
             repo: Box::new(repo),
             update: Box::new(config.update),
             conflict: Box::new(config.on_conflict),
