@@ -5,7 +5,7 @@ use core_lib::{
     core::{
         self,
         state::{AppState, init_watch_file, remove_watch_by_id},
-        watcher::WatchContext,
+        watcher::WatchContextBuilder,
     },
     git::repo::Repo,
     ipc::server::{DaemonResponse, handle_list_watches, handle_rm_watch, handle_up_watch},
@@ -122,19 +122,22 @@ async fn test_handle_up_watch_existing() -> anyhow::Result<()> {
     let id = "watch_up".to_string();
 
     let mut map = HashMap::new();
-    let ctx = WatchContext {
-        paused: true,
-        project_dir: "dir".to_string(),
+
+    let repo = Repo {
         branch: "main".to_string(),
-        repo: Repo {
-            branch: "main".to_string(),
-            last_commit: "abc".to_string(),
-            name: "name".to_string(),
-            remote: "git://github.com/pepedinho/fleet.git".to_string(),
-        },
-        id: id.clone(),
-        config: ProjectConfig::default(),
+        last_commit: "abc".to_string(),
+        name: "name".to_string(),
+        remote: "git://github.com/pepedinho/fleet.git".to_string(),
     };
+    let ctx = WatchContextBuilder::new(
+        "main".to_string(),
+        repo,
+        ProjectConfig::default(),
+        "dir".to_string(),
+        id.clone(),
+    )
+    .build()
+    .await?;
 
     map.insert(id.clone(), ctx);
     let state = Arc::new(AppState {
@@ -209,22 +212,23 @@ async fn test_handle_rm_non_existing() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_handle_list_watches_existing() -> anyhow::Result<()> {
     let mut map = HashMap::new();
-    map.insert(
+    let repo = Repo {
+        branch: "main".to_string(),
+        last_commit: "abc".to_string(),
+        name: "name".to_string(),
+        remote: "git://github.com/pepedinho/fleet.git".to_string(),
+    };
+    let ctx = WatchContextBuilder::new(
+        "main".to_string(),
+        repo,
+        ProjectConfig::default(),
+        "dir".to_string(),
         "watch1".to_string(),
-        WatchContext {
-            paused: false,
-            project_dir: "dir".to_string(),
-            branch: "main".to_string(),
-            repo: Repo {
-                branch: "main".to_string(),
-                last_commit: "abc".to_string(),
-                name: "name".to_string(),
-                remote: "git://github.com/pepedinho/fleet.git".to_string(),
-            },
-            id: "watch1".to_string(),
-            config: ProjectConfig::default(),
-        },
-    );
+    )
+    .build()
+    .await?;
+
+    map.insert("watch1".to_string(), ctx);
 
     let state = Arc::new(AppState {
         watches: RwLock::new(map),

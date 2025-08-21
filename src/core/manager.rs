@@ -12,7 +12,7 @@ use crate::{
         state::AppState,
         watcher::{WatchContext, watch_once},
     },
-    exec::runner::run_update,
+    exec::runner::run_pipeline,
     ipc::server::{DaemonRequest, handle_request},
 };
 
@@ -28,7 +28,7 @@ pub async fn supervisor_loop(state: Arc<AppState>, interval_secs: u64) {
         for (id, new_commit) in to_update {
             update_commit(&state, &id, new_commit.clone()).await;
             if let Some(ctx) = get_watch_ctx(&state, &id).await {
-                match run_update(&ctx).await {
+                match run_pipeline(Arc::new(ctx)).await {
                     Ok(_) => {
                         println!("[{id}] ✅ Update succeeded");
                         dirty = true;
