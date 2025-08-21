@@ -41,7 +41,7 @@ pub struct ProjectConfig {
     pub timeout: Option<u64>,
 }
 
-fn check_dependency_graph(config: &ProjectConfig) -> Result<()> {
+pub fn check_dependency_graph(config: &ProjectConfig) -> Result<()> {
     let pipeline = &config.pipeline;
 
     for (name, job) in pipeline.jobs.iter() {

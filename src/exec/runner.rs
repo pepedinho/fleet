@@ -8,7 +8,7 @@ use anyhow::Result;
 use tokio::sync::Mutex;
 
 use crate::{
-    config::parser::{Cmd, Job, ProjectConfig},
+    config::parser::{Cmd, Job, ProjectConfig, check_dependency_graph},
     core::watcher::WatchContext,
     exec::{
         command::{exec_background, exec_timeout},
@@ -55,14 +55,12 @@ fn build_dependency_graph(config: &ProjectConfig) -> Result<HashMap<String, JobN
 }
 
 pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
-    // Construire le graph de dépendances
+    check_dependency_graph(&ctx.config)?;
     let graph_map = build_dependency_graph(&ctx.config)?;
     let graph = Arc::new(Mutex::new(graph_map));
 
-    // Queue des jobs prêts à s'exécuter
     let ready_queue = Arc::new(Mutex::new(VecDeque::new()));
 
-    // Initialiser la queue avec les jobs qui n'ont pas de dépendances
     {
         let graph_guard = graph.lock().await;
         let mut ready_guard = ready_queue.lock().await;
@@ -73,18 +71,16 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
         }
     }
 
-    // Boucle principale
     loop {
-        // Extraire tous les jobs prêts d'un coup
         let ready_jobs: Vec<String> = {
             let mut queue = ready_queue.lock().await;
             if queue.is_empty() {
-                break; // plus aucun job à exécuter
+                break;
             }
             queue.drain(..).collect()
         };
 
-        // Lancer tous les jobs prêts en parallèle
+        //run all the ready job in paralel
         let mut handles: Vec<tokio::task::JoinHandle<std::result::Result<bool, anyhow::Error>>> =
             vec![];
         for job_name in ready_jobs {
@@ -103,11 +99,12 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
                 ctx_clone.logger.job_start(&job_name).await?;
                 for step in &job_arc.steps {
                     if let Err(e) = run_step(&ctx_clone, step, &job_arc.env).await {
+                        println!("------------------JOB FAIL DEBUG-----------------");
                         ctx_clone
                             .logger
                             .error(&format!("Job {} failed: {}", job_name, e))
                             .await?;
-                        return Ok(false);
+                        return Err(e);
                     }
                 }
 
@@ -116,7 +113,7 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
                     .info(&format!("Job {} succeeded", job_name))
                     .await?;
 
-                // Mettre à jour les dépendants
+                // update dependents
                 let mut g = graph_clone.lock().await;
                 for dep_name in &dependents {
                     let dep_node = g.get_mut(dep_name).unwrap();
@@ -135,11 +132,22 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
             handles.push(handle);
         }
 
-        // Attendre que tous les jobs lancés se terminent
+        // wait all runnin jobs
         for h in handles {
             match h.await {
-                Ok(_) => {}
-                Err(e) => ctx.logger.error(&format!("pipeline failed: {e}")).await?,
+                Ok(inner) => match inner {
+                    Ok(_) => {}
+                    Err(e) => {
+                        println!("------------------ERROR TRANSMISION DEBUG-----------------");
+                        ctx.logger.error(&format!("pipeline failed: {e}")).await?;
+                        return Err(anyhow::anyhow!("pipeline failed: {e}"));
+                    }
+                },
+                Err(e) => {
+                    println!("------------------ERROR TRANSMISION DEBUG-----------------");
+                    ctx.logger.error(&format!("pipeline failed: {e}")).await?;
+                    return Err(anyhow::anyhow!("pipeline failed: {e}"));
+                }
             }
         }
     }
@@ -180,75 +188,6 @@ async fn run_step(
     Ok(())
 }
 
-// pub async fn run_update(ctx: &WatchContext) -> Result<(), anyhow::Error> {
-//     let logger = Logger::new(&ctx.log_path()).await?;
-
-//     logger.info("Update started").await?;
-//     let update_commands = &ctx.config.update.steps;
-
-//     if update_commands.is_empty() {
-//         logger
-//             .warning("No command to execute (check your fleet.yml file)")
-//             .await?;
-//         return Ok(());
-//     }
-
-//     let default_timeout = ctx.config.timeout.unwrap_or(DEFAULT_TIMEOUT);
-
-//     for (i, cmd_line) in update_commands.iter().enumerate() {
-//         logger
-//             .info(&format!("Executing command {} : {}", i + 1, cmd_line.cmd))
-//             .await?;
-//         let parts = shell_words::split(&cmd_line.cmd)?;
-//         if parts.is_empty() {
-//             logger.info("Empty command, ignore ...").await?;
-//             continue;
-//         }
-
-//         let env = ctx.config.update.env.clone();
-//         let log_path = logger.get_path()?;
-
-//         if cmd_line.container.is_some() {
-//             let image = cmd_line.container.clone().unwrap();
-//             if cmd_line.blocking {
-//                 //blocking command => run in background and forget
-//                 // background_process(ctx, parts, &logger, env).await?;
-//                 contain_cmd(
-//                     &image,
-//                     parts,
-//                     env,
-//                     &ctx.project_dir,
-//                     &log_path,
-//                     &logger,
-//                     None,
-//                 )
-//                 .await?;
-//             } else {
-//                 //classic command w timeout
-//                 contain_cmd(
-//                     &image,
-//                     parts,
-//                     env,
-//                     &ctx.project_dir,
-//                     &log_path,
-//                     &logger,
-//                     Some(default_timeout),
-//                 )
-//                 .await?;
-//                 // timeout_process(ctx, parts, &logger, env, default_timeout).await?;
-//             }
-//         } else if cmd_line.blocking {
-//             background_process(ctx, parts, &logger, env).await?;
-//         } else {
-//             timeout_process(ctx, parts, &logger, env, default_timeout).await?;
-//         }
-//     }
-
-//     logger.info("=== Update finished successfully ===").await?;
-
-//     Ok(())
-// }
-
 async fn background_process(
     ctx: &WatchContext,
     parts: Vec<String>,
@@ -259,6 +198,7 @@ async fn background_process(
         Ok(_) => {}
         Err(e) => {
             logger.error(&format!("Failed: {e}")).await?;
+            return Err(e);
         }
     };
     Ok(())
@@ -275,50 +215,8 @@ async fn timeout_process(
         Ok(_) => {}
         Err(e) => {
             logger.error(&format!("Failed: {e}")).await?;
+            return Err(e);
         }
     };
     Ok(())
 }
-
-// pub async fn run_conflict_process(ctx: &WatchContext) -> Result<(), anyhow::Error> {
-//     let logger = Logger::new(&ctx.log_path()).await?;
-
-//     logger.info("Conflict process started").await?;
-//     let conflict_commands = &ctx.config.on_conflict.steps;
-
-//     if conflict_commands.is_empty() {
-//         logger
-//             .warning("No command to execute (check your fleet.yml file)")
-//             .await?;
-//         return Ok(());
-//     }
-
-//     let default_timeout = ctx.config.timeout.unwrap_or(DEFAULT_TIMEOUT);
-
-//     for (i, cmd_line) in conflict_commands.iter().enumerate() {
-//         logger
-//             .info(&format!("Executing command {} : {}", i + 1, cmd_line.cmd))
-//             .await?;
-//         let parts = shell_words::split(&cmd_line.cmd)?;
-//         if parts.is_empty() {
-//             logger.info("Empty command, ignore ...").await?;
-//             continue;
-//         }
-
-//         let env = ctx.config.update.env.clone();
-
-//         if cmd_line.blocking {
-//             //blocking command => run in background and forget
-//             exec_background(parts, ctx, &logger, env).await?;
-//         } else {
-//             //classic command w timeout
-//             exec_timeout(parts, ctx, &logger, default_timeout, env).await?;
-//         }
-//     }
-
-//     logger
-//         .info("=== Conflit process finished successfully ===")
-//         .await?;
-
-//     Ok(())
-// }
