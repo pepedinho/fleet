@@ -139,16 +139,14 @@ async fn test_handle_up_watch_existing() -> anyhow::Result<()> {
     .build()
     .await?;
 
+    ctx.logger.clean().await?;
     map.insert(id.clone(), ctx);
     let state = Arc::new(AppState {
         watches: RwLock::new(map),
     });
 
-    println!("before handle watch");
     let response = handle_up_watch(state.clone(), id.clone()).await;
-    println!("handle watch dont throw up");
     remove_watch_by_id(&id).await?;
-    println!("remove watch throw up");
 
     match response {
         DaemonResponse::Success(msg) => {
@@ -227,6 +225,7 @@ async fn test_handle_list_watches_existing() -> anyhow::Result<()> {
     )
     .build()
     .await?;
+    ctx.logger.clean().await?;
 
     map.insert("watch1".to_string(), ctx);
 

@@ -110,9 +110,9 @@ pub async fn contain_cmd(
     };
 
     let result = if let Some(secs) = timeout_secs {
-        // Timeout appliqué
+        // w Timeout
         match timeout(Duration::from_secs(secs), logs_future).await {
-            Ok(inner) => inner, // logs terminés normalement
+            Ok(inner) => inner,
             Err(_) => {
                 logger
                     .error(&format!(
@@ -125,7 +125,7 @@ pub async fn contain_cmd(
             }
         }
     } else {
-        // Pas de timeout
+        // w no timemout
         logs_future.await
     };
 

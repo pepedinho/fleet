@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use anyhow::Ok;
 use chrono::Local;
-use tokio::{io::AsyncWriteExt, sync::Mutex};
+use tokio::{fs::remove_file, io::AsyncWriteExt, sync::Mutex};
 
 #[derive(Debug, Clone)]
 pub struct Logger {
@@ -91,6 +91,14 @@ impl Logger {
 
     pub async fn job_end(&self, msg: &str) -> anyhow::Result<()> {
         self.log("JOB END", msg).await
+    }
+
+    pub async fn clean(&self) -> anyhow::Result<()> {
+        let log_path = self.get_path()?;
+        remove_file(&log_path)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to remove log_file {log_path} : {e}"))?;
+        Ok(())
     }
 
     pub fn get_path(&self) -> Result<String, anyhow::Error> {
