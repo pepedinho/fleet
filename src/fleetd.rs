@@ -21,7 +21,7 @@ async fn main() -> anyhow::Result<()> {
     let state = Arc::new(AppState::load_from_disk().await?);
     WatchContext::init_logs().await?;
 
-    tokio::spawn(supervisor_loop(Arc::clone(&state), 30));
+    tokio::spawn(supervisor_loop(Arc::clone(&state), 200));
 
     start_socket_listener(state).await?;
 

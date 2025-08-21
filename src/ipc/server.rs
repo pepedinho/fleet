@@ -2,11 +2,11 @@
 use std::sync::Arc;
 
 use crate::{
-    config::parser::{CommandSection, ProjectConfig},
+    config::parser::ProjectConfig,
     core::{
         id::short_id,
         state::{AppState, add_watch, get_id_by_name, get_name_by_id, remove_watch_by_id},
-        watcher::WatchContext,
+        watcher::{WatchContext, WatchContextBuilder},
     },
     git::repo::Repo,
     ipc::utiles::extract_repo_path,
@@ -27,11 +27,9 @@ pub enum DaemonRequest {
     AddWatch {
         project_dir: String,
         branch: String,
-        timeout: Option<u64>,
         // use Box (clippy)
         repo: Box<Repo>,
-        update: Box<CommandSection>,
-        conflict: Box<CommandSection>,
+        config: Box<ProjectConfig>,
     },
 
     #[serde(rename = "stop_watch")]
@@ -104,22 +102,9 @@ pub async fn handle_request(
         DaemonRequest::AddWatch {
             project_dir,
             branch,
-            timeout,
             repo,
-            update,
-            conflict,
-        } => {
-            handle_add_watch(
-                state,
-                project_dir,
-                branch,
-                timeout,
-                *repo,
-                *update,
-                *conflict,
-            )
-            .await
-        }
+            config,
+        } => handle_add_watch(state, project_dir, branch, *repo, *config).await?,
 
         DaemonRequest::StopWatch { id } => handle_stop_watch(state, id).await,
 
@@ -142,11 +127,9 @@ async fn handle_add_watch(
     state: Arc<AppState>,
     project_dir: String,
     branch: String,
-    timeout: Option<u64>,
     mut repo: Repo,
-    update: CommandSection,
-    conflict: CommandSection,
-) -> DaemonResponse {
+    config: ProjectConfig,
+) -> anyhow::Result<DaemonResponse> {
     let mut guard = state.watches.write().await;
     let existing_id = guard
         .iter()
@@ -160,19 +143,9 @@ async fn handle_add_watch(
 
     let id = existing_id.unwrap_or_else(short_id);
 
-    let ctx = WatchContext {
-        branch,
-        repo,
-        config: ProjectConfig {
-            update,
-            on_conflict: conflict,
-            timeout,
-            ..Default::default()
-        },
-        project_dir,
-        id: id.clone(),
-        paused: false,
-    };
+    let ctx = WatchContextBuilder::new(branch, repo, config, project_dir, id.clone())
+        .build()
+        .await?;
 
     let result = async {
         let logger = Logger::new(&ctx.log_path()).await?;
@@ -190,8 +163,10 @@ async fn handle_add_watch(
     .await;
 
     match result {
-        Ok(_) => DaemonResponse::Success(format!("📌 Project registered with ID: {id}")),
-        Err(e) => DaemonResponse::Error(format!("Failed to add watch: {e}")),
+        Ok(_) => Ok(DaemonResponse::Success(format!(
+            "📌 Project registered with ID: {id}"
+        ))),
+        Err(e) => Ok(DaemonResponse::Error(format!("Failed to add watch: {e}"))),
     }
 }
 

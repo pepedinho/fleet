@@ -5,7 +5,7 @@ use anyhow::Ok;
 use chrono::Local;
 use tokio::{io::AsyncWriteExt, sync::Mutex};
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Logger {
     pub file: Arc<Mutex<tokio::fs::File>>,
     path: String,
@@ -16,6 +16,8 @@ const RESET: &str = "\x1b[0m";
 const BG_BLUE: &str = "\x1b[44m"; // info
 const BG_ORANGE: &str = "\x1b[48;5;208m"; // warning (orange vrai en 256 couleurs)
 const BG_RED: &str = "\x1b[41m";
+const BG_GREEN: &str = "\x1b[42m"; // job start 
+const BG_MAGENTA: &str = "\x1b[45m"; // job end 
 const FG_BOLD_WHITE: &str = "\x1b[97;1m";
 
 impl Logger {
@@ -33,6 +35,16 @@ impl Logger {
         })
     }
 
+    pub fn placeholder() -> Logger {
+        Logger {
+            file: Arc::new(Mutex::new(tokio::fs::File::from_std(
+                std::fs::File::create("/dev/null").unwrap(),
+            ))),
+            path: String::new(),
+            color_enable: false,
+        }
+    }
+
     fn paint_level(&self, level: &str) -> String {
         if !self.color_enable {
             return level.to_string();
@@ -41,6 +53,8 @@ impl Logger {
             "INFO" => format!("{BG_BLUE}{FG_BOLD_WHITE} {level} {RESET}"),
             "WARNING" => format!("{BG_ORANGE}{FG_BOLD_WHITE} {level} {RESET}"),
             "ERROR" => format!("{BG_RED}{FG_BOLD_WHITE} {level} {RESET}"),
+            "JOB START" => format!("{BG_GREEN}{FG_BOLD_WHITE} {level} {RESET}"),
+            "JOB END" => format!("{BG_MAGENTA}{FG_BOLD_WHITE} {level} {RESET}"),
             _ => level.to_string(),
         }
     }
@@ -69,6 +83,14 @@ impl Logger {
 
     pub async fn error(&self, msg: &str) -> anyhow::Result<()> {
         self.log("ERROR", msg).await
+    }
+
+    pub async fn job_start(&self, msg: &str) -> anyhow::Result<()> {
+        self.log("JOB START", msg).await
+    }
+
+    pub async fn job_end(&self, msg: &str) -> anyhow::Result<()> {
+        self.log("JOB END", msg).await
     }
 
     pub fn get_path(&self) -> Result<String, anyhow::Error> {
