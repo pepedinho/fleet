@@ -6,6 +6,7 @@ use dirs::home_dir;
 use serde::{Deserialize, Serialize};
 use tokio::fs;
 
+use crate::logging::Logger;
 #[allow(unused_imports)]
 use crate::{
     config::parser::ProjectConfig,
@@ -20,6 +21,59 @@ pub struct WatchContext {
     pub project_dir: String,
     pub id: String,
     pub paused: bool,
+    #[serde(skip, default = "Logger::placeholder")]
+    pub logger: Logger,
+}
+
+pub struct WatchContextBuilder {
+    branch: String,
+    repo: Repo,
+    config: ProjectConfig,
+    project_dir: String,
+    id: String,
+    paused: bool,
+}
+
+impl WatchContextBuilder {
+    pub fn new(
+        branch: String,
+        repo: Repo,
+        config: ProjectConfig,
+        project_dir: String,
+        id: String,
+    ) -> Self {
+        Self {
+            branch,
+            repo,
+            config,
+            project_dir,
+            id,
+            paused: false,
+        }
+    }
+
+    pub async fn build(self) -> Result<WatchContext, anyhow::Error> {
+        // Création du logger avec les infos du contexte partiel
+        let logger = Logger::new(&self.log_path()).await?;
+
+        // Construction du WatchContext complet
+        Ok(WatchContext {
+            branch: self.branch,
+            repo: self.repo,
+            config: self.config,
+            project_dir: self.project_dir,
+            id: self.id,
+            paused: self.paused,
+            logger,
+        })
+    }
+
+    fn log_path(&self) -> PathBuf {
+        let home = home_dir().unwrap();
+
+        let log_dir = home.join(".fleet").join("logs");
+        log_dir.join(self.id.to_string() + ".log")
+    }
 }
 
 impl WatchContext {

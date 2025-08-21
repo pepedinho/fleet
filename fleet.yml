@@ -1,24 +1,36 @@
+# new config
+
 ENV: &default_env
   SECRET_TOKEN: $
   TEST_KEY: "oui"
 
-timeout: 10
+timeout: 200
 
-update:
-  env: *default_env
-  steps: 
-    # - cmd: git pull
-    # - cmd: env
-    - cmd: echo "start to sleep"
-    - cmd: sleep 15
-      container: rust:1.88
-    - cmd: ping google.com
-      blocking: true
+pipeline:
+  jobs:
+    build:
+      steps:
+        - cmd: cargo build
 
-on_conflict:
-  env: *default_env
-  steps: 
-  - cmd: echo "un conflit est survenu"
+    test_rust:
+      needs: [build]
+      env:
+        RUST_LOG: debug
+      steps:
+        - cmd: cargo test
 
-post_update:
-  - echo "update terminé"
+    echo_test:
+      needs: [build]
+      steps:
+        - cmd: echo test 1
+          container: ubuntu:latest
+
+    sleep_test:
+      steps:
+        - cmd: sleep 20
+        
+    deploy:
+      needs: [test_rust, echo_test]
+      steps:
+        - cmd: echo je suis arriver a la fin
+          blocking: true
