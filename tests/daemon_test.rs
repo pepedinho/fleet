@@ -1,14 +1,8 @@
 use std::{collections::HashMap, env::temp_dir, sync::Arc};
 
 use core_lib::{
-    config::parser::ProjectConfig,
-    core::{
-        self,
-        state::{AppState, init_watch_file, remove_watch_by_id},
-        watcher::WatchContextBuilder,
-    },
-    git::repo::Repo,
-    ipc::server::{DaemonResponse, handle_list_watches, handle_rm_watch, handle_up_watch},
+    core::{self, state::AppState},
+    ipc::server::{DaemonResponse, handle_list_watches, handle_rm_watch},
     logging::Logger,
 };
 use pretty_assertions::assert_eq;
