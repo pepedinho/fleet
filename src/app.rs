@@ -8,18 +8,19 @@ use crate::{
     config::parser::load_config,
     git::repo::Repo,
     ipc::{client::send_watch_request, server::DaemonRequest},
+    stats::interface::display_stats_interface,
 };
 
 /// Handles watch-related CLI commands by delegating to subfunctions
 /// that build the appropriate [`DaemonRequest`].
 pub async fn handle_watch(cli: &Cli) -> Result<()> {
-    let watch_req = build_watch_request(cli)?;
+    let watch_req = build_watch_request(cli).await?;
     send_watch_request(watch_req).await?;
     Ok(())
 }
 
 /// Builds the appropriate [`DaemonRequest`] for the given CLI command.
-pub fn build_watch_request(cli: &Cli) -> Result<DaemonRequest> {
+pub async fn build_watch_request(cli: &Cli) -> Result<DaemonRequest> {
     match &cli.command {
         Commands::Watch { branch } => build_add_watch_request(branch.clone()),
         Commands::Ps { all } => Ok(DaemonRequest::ListWatches { all: *all }),
@@ -27,6 +28,10 @@ pub fn build_watch_request(cli: &Cli) -> Result<DaemonRequest> {
         Commands::Stop { id } => Ok(DaemonRequest::StopWatch { id: id.to_string() }),
         Commands::Up { id } => Ok(DaemonRequest::UpWatch { id: id.to_string() }),
         Commands::Rm { id } => Ok(DaemonRequest::RmWatch { id: id.to_string() }),
+        Commands::Stats => {
+            display_stats_interface().await?;
+            Ok(DaemonRequest::None)
+        }
     }
 }
 

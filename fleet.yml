@@ -17,7 +17,8 @@ pipeline:
       env:
         RUST_LOG: debug
       steps:
-        - cmd: cargo test
+        - cmd: cargo test --test cli_test
+          contaner: rust:1.89
 
     echo_test:
       needs: [build]
@@ -27,7 +28,7 @@ pipeline:
 
     sleep_test:
       steps:
-        - cmd: sleep 20
+        - cmd: sleep 5
         
     deploy:
       needs: [test_rust, echo_test]
