@@ -1,8 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    io,
-    time::Duration,
-};
+use std::{collections::HashMap, io, time::Duration};
 
 use anyhow::Result;
 use ratatui::{
@@ -41,7 +37,7 @@ pub struct ProjectMetrics {
     pub max_mem: f32,
     pub jobs: HashMap<String, JobMetrics>,
 }
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, PartialEq)]
 pub struct ProjectStats {
     pub id: String,
     pub name: String,
@@ -55,16 +51,19 @@ pub struct ProjectStats {
 pub struct App {
     pub project: Vec<ProjectStats>,
     pub selected: usize,
-    pub expanded: HashSet<String>,
+    pub scroll: usize,
+    pub table_height: usize,
 }
 
-pub fn ui(f: &mut Frame, app: &App) {
+pub fn ui(f: &mut Frame, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(7), Constraint::Min(0)].as_ref())
         .split(f.area());
 
-    let table = render_table(app);
+    let table_height = chunks[0].height.saturating_sub(3) as usize;
+    app.table_height = table_height;
+    let table = render_table(app, table_height);
     f.render_widget(table, chunks[0]);
 
     if let Some(details) = render_project_details(app) {
@@ -73,9 +72,7 @@ pub fn ui(f: &mut Frame, app: &App) {
 }
 
 pub fn render_project_details(app: &App) -> Option<Paragraph<'_>> {
-    if let Some(proj) = app.project.get(app.selected)
-        && app.expanded.contains(&proj.id)
-    {
+    if let Some(proj) = app.project.get(app.selected) {
         let logs = proj
             .last_logs
             .iter()
@@ -96,7 +93,7 @@ pub fn render_project_details(app: &App) -> Option<Paragraph<'_>> {
     None
 }
 
-pub fn render_table(app: &App) -> Table<'_> {
+pub fn render_table(app: &App, height: usize) -> Table<'_> {
     // En-tête
     let header = Row::new(vec![
         Cell::from("ID"),
@@ -112,6 +109,8 @@ pub fn render_table(app: &App) -> Table<'_> {
         .project
         .iter()
         .enumerate()
+        .skip(app.scroll)
+        .take(height)
         .map(|(i, proj)| {
             let mut row = Row::new(vec![
                 proj.id.clone(),
@@ -204,6 +203,19 @@ pub async fn load_all_stats() -> Result<Vec<ProjectStats>> {
         });
     }
     // dbg!(&stats);
+    stats.sort_by(|a, b| {
+        let a_last = a
+            .last_duration
+            .replace(" ms", "")
+            .parse::<u128>()
+            .unwrap_or(0);
+        let b_last = b
+            .last_duration
+            .replace(" ms", "")
+            .parse::<u128>()
+            .unwrap_or(0);
+        b_last.cmp(&a_last) // du plus récent au plus ancien
+    });
     Ok(stats)
 }
 
@@ -217,13 +229,15 @@ pub async fn display_stats_interface() -> anyhow::Result<()> {
     let mut app = App {
         project: load_all_stats().await?,
         selected: 0,
-        expanded: HashSet::new(),
+        scroll: 0,
+        table_height: 0,
     };
 
     loop {
         app.project = load_all_stats().await?;
+
         terminal.draw(|f| {
-            ui(f, &app);
+            ui(f, &mut app);
         })?;
 
         if event::poll(Duration::from_millis(200))?
@@ -234,20 +248,17 @@ pub async fn display_stats_interface() -> anyhow::Result<()> {
                 KeyCode::Down => {
                     if !app.project.is_empty() {
                         app.selected = (app.selected + 1).min(app.project.len() - 1);
+                        if app.selected >= app.scroll + app.table_height {
+                            app.scroll = app.selected - app.table_height + 1;
+                        }
                     }
                 }
                 KeyCode::Up => {
                     if !app.project.is_empty() && app.selected > 0 {
                         app.selected -= 1;
-                    }
-                }
-                KeyCode::Enter => {
-                    if !app.project.is_empty() {
-                        let id = &app.project[app.selected].id;
-                        if app.expanded.contains(id) {
-                            app.expanded.remove(id);
-                        } else {
-                            app.expanded.insert(id.clone());
+
+                        if app.selected < app.scroll {
+                            app.scroll = app.selected;
                         }
                     }
                 }
