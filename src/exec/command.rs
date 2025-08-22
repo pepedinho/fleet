@@ -8,30 +8,14 @@ use tokio::{
     time::timeout,
 };
 
-use crate::{core::watcher::WatchContext, logging::Logger};
+use crate::{core::watcher::WatchContext, exec::metrics::monitor_process, logging::Logger};
 
 pub struct CommandOutput {
     pub stdout: String,
     pub stderr: String,
     pub status_code: Option<i32>,
-}
-
-pub async fn run_command_capture_output(
-    program: &str,
-    args: &[String],
-    current_dir: &str,
-) -> Result<CommandOutput> {
-    let output = Command::new(program)
-        .args(args)
-        .current_dir(current_dir)
-        .output()
-        .await?;
-
-    Ok(CommandOutput {
-        stdout: String::from_utf8_lossy(&output.stdout).to_string(),
-        stderr: String::from_utf8_lossy(&output.stderr).to_string(),
-        status_code: output.status.code(),
-    })
+    pub cpu_usage: f32,
+    pub mem_usage_kb: u64,
 }
 
 pub async fn run_command_with_timeout(
@@ -55,6 +39,12 @@ pub async fn run_command_with_timeout(
         }
     }
     let mut child = cmd.spawn()?;
+    let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+    let child_pid = child.id();
+    tokio::spawn(async move {
+        let metrics = monitor_process(child_pid.unwrap_or(1)).await;
+        let _ = tx.send(metrics).await;
+    });
 
     let stdout = child.stdout.take().expect("stdout should be capture");
     let stderr = child.stderr.take().expect("stderr should be capture");
@@ -81,14 +71,18 @@ pub async fn run_command_with_timeout(
 
         let status = child.wait().await?;
 
-        anyhow::Ok((status, stdout_buf, stderr_buf))
+        let (cpu_usage, mem_usage_kb) = rx.recv().await.unwrap_or((0.0, 0));
+        println!("METRICS EXTRACTED => {} | {}", cpu_usage, mem_usage_kb);
+        anyhow::Ok((status, stdout_buf, stderr_buf, cpu_usage, mem_usage_kb))
     };
 
     match timeout(duration, run_future).await {
-        Ok(Ok((status, stdout_data, stderr_data))) => Ok(CommandOutput {
+        Ok(Ok((status, stdout_data, stderr_data, cpu_usage, mem_usage_kb))) => Ok(CommandOutput {
             stdout: String::from_utf8_lossy(&stdout_data).to_string(),
             stderr: String::from_utf8_lossy(&stderr_data).to_string(),
             status_code: status.code(),
+            cpu_usage,
+            mem_usage_kb,
         }),
         Ok(Err(e)) => Err(anyhow::anyhow!("Error during execution : {}", e)),
         Err(_) => {
@@ -136,7 +130,7 @@ pub async fn exec_timeout(
     logger: &Logger,
     timeout: u64,
     env: Option<HashMap<String, String>>,
-) -> Result<(), anyhow::Error> {
+) -> Result<CommandOutput, anyhow::Error> {
     let program = &parts[0];
     let args = &parts[1..];
     match run_command_with_timeout(program, args, &ctx.project_dir, timeout, env).await {
@@ -153,19 +147,15 @@ pub async fn exec_timeout(
             logger.info(&format!("stdout:\n{}", output.stdout)).await?;
             logger.info(&format!("stderr:\n{}", output.stderr)).await?;
             logger.info("Command succeeded").await?;
+            Ok(output)
         }
         Err(e) => {
             logger
                 .error(&format!("Command error or timeout: {parts:?}"))
                 .await?;
-            return Err(e);
+            Err(e)
         }
     }
-    if cfg!(all(feature = "force_conflict")) {
-        println!("conflict forced");
-        return Err(anyhow::anyhow!("Forced conflict via feature"));
-    }
-    Ok(())
 }
 
 pub async fn exec_background(
@@ -212,9 +202,5 @@ pub async fn exec_background(
     }
 
     logger.info("Background command launched").await?;
-    if cfg!(all(feature = "force_conflict")) {
-        println!("conflict forced");
-        return Err(anyhow::anyhow!("Forced conflict via feature"));
-    }
     Ok(())
 }
