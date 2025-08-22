@@ -1,5 +1,6 @@
 #![allow(dead_code)]
-use std::{collections::HashMap, path::PathBuf};
+use core::f32;
+use std::{collections::HashMap, path::PathBuf, time::Duration};
 
 use chrono::{DateTime, Utc};
 use dirs::home_dir;
@@ -7,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use tokio::{
     fs::{self},
     io::AsyncWriteExt,
+    time::sleep,
 };
 
 use crate::logging::Logger;
@@ -29,6 +31,10 @@ pub struct JobMetrics {
     pub duration_ms: Option<u128>,
     pub cpu_usage: f32,
     pub mem_usage_kb: u64,
+    pub max_cpu: f32,
+    pub max_mem: u64,
+    #[serde(skip)]
+    pub buf: Vec<(f32, u64)>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -42,6 +48,8 @@ pub struct ExecMetrics {
 
     pub cpu_usage: f32,
     pub mem_usage_kb: u64,
+    pub max_cpu: f32,
+    pub max_mem: u64,
 
     pub jobs: HashMap<String, JobMetrics>,
 
@@ -59,8 +67,16 @@ impl ExecMetrics {
             duration_ms: None,
             cpu_usage: 0.0,
             mem_usage_kb: 0,
+            max_cpu: 0.0,
+            max_mem: 0,
             jobs: std::collections::HashMap::new(),
             logger,
+        }
+    }
+
+    pub fn sys_push(&mut self, name: &str, cpu: f32, mem: u64) {
+        if let Some(j) = self.jobs.get_mut(name) {
+            j.buf.push((cpu, mem));
         }
     }
 
@@ -72,6 +88,44 @@ impl ExecMetrics {
             end.signed_duration_since(self.started_at)
                 .num_milliseconds() as u128,
         );
+        let v: Vec<(f32, u64)> = self
+            .jobs
+            .values()
+            .map(|v| (v.cpu_usage, v.mem_usage_kb))
+            .collect();
+
+        if !v.is_empty() {
+            // Moyenne CPU
+            let cpu_sum: f32 = v.iter().map(|(cpu, _)| *cpu).sum();
+            let cpu_count = v.len() as f32;
+            let average_cpu = cpu_sum / cpu_count;
+
+            // Maximum CPU
+            let max_cpu = v.iter().map(|(cpu, _)| *cpu).fold(0.0_f32, |a, b| a.max(b));
+
+            // Moyenne mémoire
+            let mem_sum: u64 = v.iter().map(|(_, mem)| *mem).sum();
+            let mem_count = v.len() as u64;
+            let average_mem = mem_sum / mem_count;
+
+            // Maximum mémoire
+            let max_mem = v
+                .iter()
+                .map(|(_, mem)| *mem)
+                .fold(u64::MIN, |a, b| a.max(b));
+
+            // On stocke dans la structure globale
+            self.cpu_usage = average_cpu;
+            self.mem_usage_kb = average_mem;
+            self.max_cpu = max_cpu;
+            self.max_mem = max_mem;
+        } else {
+            // Cas où aucun job n'est présent
+            self.cpu_usage = 0.0;
+            self.mem_usage_kb = 0;
+            self.max_cpu = f32::MIN;
+            self.max_mem = 0;
+        }
     }
 
     /// start job (just insert it with Running status)
@@ -86,12 +140,36 @@ impl ExecMetrics {
                 duration_ms: None,
                 cpu_usage: 0.0,
                 mem_usage_kb: 0,
+                max_cpu: 0.0,
+                max_mem: 0,
+                buf: Vec::new(),
             },
         );
     }
 
     pub fn job_finished(&mut self, name: &str, ok: bool) {
         if let Some(j) = self.jobs.get_mut(name) {
+            if !j.buf.is_empty() {
+                let cpu_sum: f32 = j.buf.iter().map(|(value, _)| *value).sum();
+                let count = j.buf.len() as f32;
+
+                let average_cpu = cpu_sum / count;
+                let max_cpu = j.buf.iter().map(|(v, _)| *v).fold(0.0_f32, |a, b| a.max(b));
+
+                let mem_sum: u64 = j.buf.iter().map(|(_, m)| *m).sum();
+
+                let average_mem = mem_sum / (count as u64);
+                let max_mem = j
+                    .buf
+                    .iter()
+                    .map(|(_, m)| *m)
+                    .fold(u64::MIN, |a, b| a.max(b));
+
+                j.cpu_usage = average_cpu;
+                j.mem_usage_kb = average_mem;
+                j.max_mem = max_mem;
+                j.max_cpu = max_cpu;
+            }
             let end = Utc::now();
             j.finished_at = Some(end);
             j.duration_ms =
@@ -136,4 +214,30 @@ impl ExecMetrics {
         file.flush().await?;
         Ok(())
     }
+}
+
+pub async fn monitor_process(pid: u32) -> (f32, u64) {
+    let mut sys = sysinfo::System::new_all();
+    let mut samples_cpu = vec![];
+    let mut max_mem = 0;
+
+    loop {
+        sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
+        if let Some(proc) = sys.process(sysinfo::Pid::from(pid as usize)) {
+            samples_cpu.push(proc.cpu_usage());
+            max_mem = max_mem.max(proc.memory());
+        } else {
+            // Process finished
+            break;
+        }
+        sleep(Duration::from_millis(100)).await;
+    }
+
+    let avg_cpu = if samples_cpu.is_empty() {
+        0.0
+    } else {
+        samples_cpu.iter().sum::<f32>() / samples_cpu.len() as f32
+    };
+
+    (avg_cpu, max_mem)
 }

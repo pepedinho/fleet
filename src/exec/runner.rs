@@ -11,8 +11,9 @@ use crate::{
     config::parser::{Cmd, Job, ProjectConfig, check_dependency_graph},
     core::watcher::WatchContext,
     exec::{
-        command::{exec_background, exec_timeout},
+        command::{CommandOutput, exec_background, exec_timeout},
         container::contain_cmd,
+        metrics::ExecMetrics,
     },
     logging::Logger,
 };
@@ -55,6 +56,12 @@ fn build_dependency_graph(config: &ProjectConfig) -> Result<HashMap<String, JobN
 }
 
 pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
+    let metrics = Arc::new(tokio::sync::Mutex::new(ExecMetrics::new(
+        &ctx.id,
+        &ctx.repo.name,
+        ctx.logger.clone(),
+    )));
+
     check_dependency_graph(&ctx.config)?;
     let graph_map = build_dependency_graph(&ctx.config)?;
     let graph = Arc::new(Mutex::new(graph_map));
@@ -87,6 +94,7 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
             let graph_clone = Arc::clone(&graph);
             let ready_clone = Arc::clone(&ready_queue);
             let ctx_clone = Arc::clone(&ctx);
+            let metrics_clone = Arc::clone(&metrics);
 
             let (job_arc, dependents) = {
                 let g = graph.lock().await;
@@ -95,16 +103,40 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
             };
 
             let handle = tokio::spawn(async move {
+                {
+                    let mut m = metrics_clone.lock().await;
+                    m.job_started(&job_name);
+                }
                 // exec all job step
                 ctx_clone.logger.job_start(&job_name).await?;
                 for step in &job_arc.steps {
-                    if let Err(e) = run_step(&ctx_clone, step, &job_arc.env).await {
-                        ctx_clone
-                            .logger
-                            .error(&format!("Job {} failed: {}", job_name, e))
-                            .await?;
-                        return Err(e);
+                    match run_step(&ctx_clone, step, &job_arc.env).await {
+                        Ok(Some(output)) => {
+                            let mut m = metrics_clone.lock().await;
+                            m.sys_push(&job_name, output.cpu_usage, output.mem_usage_kb);
+                            println!(
+                                "add ({} {}) metrics into {} debug => \n{:#?}",
+                                output.cpu_usage, output.mem_usage_kb, &job_name, m
+                            );
+                        }
+                        Ok(None) => {}
+                        Err(e) => {
+                            ctx_clone
+                                .logger
+                                .error(&format!("Job {} failed: {}", job_name, e))
+                                .await?;
+                            {
+                                let mut m = metrics_clone.lock().await;
+                                m.job_finished(&job_name, false);
+                            }
+                            return Err(e);
+                        }
                     }
+                }
+
+                {
+                    let mut m = metrics_clone.lock().await;
+                    m.job_finished(&job_name, true);
                 }
 
                 ctx_clone
@@ -137,16 +169,28 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
                 Ok(inner) => match inner {
                     Ok(_) => {}
                     Err(e) => {
+                        let mut m = metrics.lock().await;
+                        m.finalize();
+                        m.save().await.ok();
                         ctx.logger.error(&format!("pipeline failed: {e}")).await?;
                         return Err(anyhow::anyhow!("pipeline failed: {e}"));
                     }
                 },
                 Err(e) => {
+                    let mut m = metrics.lock().await;
+                    m.finalize();
+                    m.save().await.ok();
                     ctx.logger.error(&format!("pipeline failed: {e}")).await?;
                     return Err(anyhow::anyhow!("pipeline failed: {e}"));
                 }
             }
         }
+    }
+
+    {
+        let mut m = metrics.lock().await;
+        m.finalize();
+        m.save().await?;
     }
 
     Ok(())
@@ -156,7 +200,7 @@ async fn run_step(
     ctx: &WatchContext,
     step: &Cmd,
     env: &Option<HashMap<String, String>>,
-) -> Result<()> {
+) -> Result<Option<CommandOutput>> {
     let parts = shell_words::split(&step.cmd)?;
 
     if let Some(container) = &step.container {
@@ -173,16 +217,18 @@ async fn run_step(
     } else if step.blocking {
         background_process(ctx, parts, &ctx.logger, env.clone()).await?;
     } else {
-        timeout_process(
-            ctx,
-            parts,
-            &ctx.logger,
-            env.clone(),
-            ctx.config.timeout.unwrap_or(DEFAULT_TIMEOUT),
-        )
-        .await?;
+        return Ok(Some(
+            timeout_process(
+                ctx,
+                parts,
+                &ctx.logger,
+                env.clone(),
+                ctx.config.timeout.unwrap_or(DEFAULT_TIMEOUT),
+            )
+            .await?,
+        ));
     }
-    Ok(())
+    Ok(None)
 }
 
 async fn background_process(
@@ -207,13 +253,12 @@ async fn timeout_process(
     logger: &Logger,
     env: Option<HashMap<String, String>>,
     default_timeout: u64,
-) -> Result<(), anyhow::Error> {
+) -> Result<CommandOutput, anyhow::Error> {
     match exec_timeout(parts.clone(), ctx, logger, default_timeout, env).await {
-        Ok(_) => {}
+        Ok(o) => Ok(o),
         Err(e) => {
             logger.error(&format!("Failed: {e}")).await?;
-            return Err(e);
+            Err(e)
         }
-    };
-    Ok(())
+    }
 }
