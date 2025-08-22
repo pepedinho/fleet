@@ -8,7 +8,7 @@ use crate::{
     config::parser::load_config,
     git::repo::Repo,
     ipc::{client::send_watch_request, server::DaemonRequest},
-    stats::interface::{display_stats_interface},
+    stats::interface::display_stats_interface,
 };
 
 /// Handles watch-related CLI commands by delegating to subfunctions
