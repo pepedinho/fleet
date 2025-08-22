@@ -43,7 +43,6 @@ pub async fn run_command_with_timeout(
     let child_pid = child.id();
     tokio::spawn(async move {
         let metrics = monitor_process(child_pid.unwrap_or(1)).await;
-        println!("METRICS FOUND => {:#?}", metrics);
         let _ = tx.send(metrics).await;
     });
 

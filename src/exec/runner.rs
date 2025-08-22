@@ -114,10 +114,6 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
                         Ok(Some(output)) => {
                             let mut m = metrics_clone.lock().await;
                             m.sys_push(&job_name, output.cpu_usage, output.mem_usage_kb);
-                            println!(
-                                "add ({} {}) metrics into {} debug => \n{:#?}",
-                                output.cpu_usage, output.mem_usage_kb, &job_name, m
-                            );
                         }
                         Ok(None) => {}
                         Err(e) => {

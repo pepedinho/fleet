@@ -36,9 +36,9 @@ pub struct ProjectMetrics {
     pub finished_at: chrono::DateTime<chrono::Utc>,
     pub duration_ms: u128,
     pub cpu_usage: f32,
-    pub mem_usage_kb: u64,
+    pub mem_usage_kb: f32,
     pub max_cpu: f32,
-    pub max_mem: u64,
+    pub max_mem: f32,
     pub jobs: HashMap<String, JobMetrics>,
 }
 #[derive(Debug, Deserialize)]
@@ -47,7 +47,7 @@ pub struct ProjectStats {
     pub name: String,
     pub last_duration: String,
     pub avg_cpu: f32,
-    pub avg_mem: u64,
+    pub avg_mem: f32,
     pub runs: usize,
     pub last_logs: Vec<String>,
 }
@@ -185,7 +185,7 @@ pub async fn load_all_stats() -> Result<Vec<ProjectStats>> {
 
         let runs_count = runs.len();
         let avg_cpu = runs.iter().map(|r| r.cpu_usage).sum::<f32>() / runs_count as f32;
-        let avg_mem = runs.iter().map(|r| r.mem_usage_kb).sum::<u64>() / runs_count as u64;
+        let avg_mem = runs.iter().map(|r| r.mem_usage_kb).sum::<f32>() / runs_count as f32;
 
         let last = runs.iter().max_by_key(|r| r.finished_at).unwrap();
         let last_duration = format!("{} ms", last.duration_ms);
@@ -232,19 +232,23 @@ pub async fn display_stats_interface() -> anyhow::Result<()> {
             match key.code {
                 KeyCode::Char('q') | KeyCode::Char('Q') => break,
                 KeyCode::Down => {
-                    app.selected = (app.selected + 1).min(app.project.len() - 1);
+                    if !app.project.is_empty() {
+                        app.selected = (app.selected + 1).min(app.project.len() - 1);
+                    }
                 }
                 KeyCode::Up => {
-                    if app.selected > 0 {
+                    if !app.project.is_empty() && app.selected > 0 {
                         app.selected -= 1;
                     }
                 }
                 KeyCode::Enter => {
-                    let id = &app.project[app.selected].id;
-                    if app.expanded.contains(id) {
-                        app.expanded.remove(id);
-                    } else {
-                        app.expanded.insert(id.clone());
+                    if !app.project.is_empty() {
+                        let id = &app.project[app.selected].id;
+                        if app.expanded.contains(id) {
+                            app.expanded.remove(id);
+                        } else {
+                            app.expanded.insert(id.clone());
+                        }
                     }
                 }
                 _ => {}

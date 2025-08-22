@@ -19,7 +19,7 @@ pub struct Logger {
 
 const RESET: &str = "\x1b[0m";
 const BG_BLUE: &str = "\x1b[44m"; // info
-const BG_ORANGE: &str = "\x1b[48;5;208m"; // warning (orange vrai en 256 couleurs)
+const BG_ORANGE: &str = "\x1b[48;5;208m"; // warning 
 const BG_RED: &str = "\x1b[41m";
 const BG_GREEN: &str = "\x1b[42m"; // job start 
 const BG_MAGENTA: &str = "\x1b[45m"; // job end 
