@@ -7,8 +7,8 @@ use core_lib::git::repo::Repo;
 use core_lib::ipc::server::DaemonRequest;
 use pretty_assertions::assert_eq;
 
-#[test]
-fn test_build_watch_request_branch_none() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::test]
+async fn test_build_watch_request_branch_none() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli {
         command: cli::Commands::Watch { branch: None },
     };
@@ -16,7 +16,7 @@ fn test_build_watch_request_branch_none() -> Result<(), Box<dyn std::error::Erro
     let repo = Repo::build(None)?;
     let config = load_config(Path::new("./fleet.yml"))?;
 
-    let watch_req = build_watch_request(&cli)?;
+    let watch_req = build_watch_request(&cli).await?;
     assert_eq!(
         watch_req,
         DaemonRequest::AddWatch {
@@ -30,8 +30,8 @@ fn test_build_watch_request_branch_none() -> Result<(), Box<dyn std::error::Erro
     Ok(())
 }
 
-#[test]
-fn test_build_watch_request_branch_some() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::test]
+async fn test_build_watch_request_branch_some() -> Result<(), Box<dyn std::error::Error>> {
     let repo = Repo::build(None)?;
     let cli = Cli {
         command: cli::Commands::Watch {
@@ -41,7 +41,7 @@ fn test_build_watch_request_branch_some() -> Result<(), Box<dyn std::error::Erro
 
     let config = load_config(Path::new("./fleet.yml"))?;
 
-    let watch_req = build_watch_request(&cli)?;
+    let watch_req = build_watch_request(&cli).await?;
     assert_eq!(
         watch_req,
         DaemonRequest::AddWatch {

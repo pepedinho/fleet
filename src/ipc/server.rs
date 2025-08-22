@@ -33,19 +33,32 @@ pub enum DaemonRequest {
     },
 
     #[serde(rename = "stop_watch")]
-    StopWatch { id: String },
+    StopWatch {
+        id: String,
+    },
 
     #[serde(rename = "up_watch")]
-    UpWatch { id: String },
+    UpWatch {
+        id: String,
+    },
 
     #[serde(rename = "rm_watch")]
-    RmWatch { id: String },
+    RmWatch {
+        id: String,
+    },
 
     #[serde(rename = "list_watch")]
-    ListWatches { all: bool },
+    ListWatches {
+        all: bool,
+    },
 
     #[serde(rename = "logs_watch")]
-    LogsWatches { id: String, f: bool },
+    LogsWatches {
+        id: String,
+        f: bool,
+    },
+
+    None,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -65,6 +78,7 @@ pub enum DaemonResponse {
     Error(String),
     ListWatches(Vec<WatchInfo>),
     LogWatch(String, bool),
+    None,
 }
 
 pub async fn get_log_file(ctx: &WatchContext) -> Result<File> {
@@ -115,6 +129,8 @@ pub async fn handle_request(
         DaemonRequest::ListWatches { all } => handle_list_watches(state, all).await,
 
         DaemonRequest::LogsWatches { id, f } => handle_logs_watches(id, f).await,
+
+        DaemonRequest::None => DaemonResponse::None,
     };
 
     send_response(stream, response).await?;

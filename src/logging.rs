@@ -1,9 +1,14 @@
 #![allow(dead_code)]
-use std::sync::Arc;
+use std::{io::SeekFrom, path::PathBuf, sync::Arc};
 
 use anyhow::Ok;
 use chrono::Local;
-use tokio::{fs::remove_file, io::AsyncWriteExt, sync::Mutex};
+use dirs::home_dir;
+use tokio::{
+    fs::{File, remove_file},
+    io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt},
+    sync::Mutex,
+};
 
 #[derive(Debug, Clone)]
 pub struct Logger {
@@ -33,6 +38,65 @@ impl Logger {
             path: String::from(path.to_str().unwrap_or("")),
             color_enable: !no_color,
         })
+    }
+
+    pub fn path_by_id(id: &str) -> PathBuf {
+        let home = home_dir().unwrap();
+
+        let log_dir = home.join(".fleet").join("logs");
+        log_dir.join(id.to_string() + ".log")
+    }
+
+    pub async fn fetchn(id: &str, n: usize) -> anyhow::Result<Vec<String>> {
+        let path = Logger::path_by_id(id);
+
+        // Vérifier que le fichier existe
+        if !tokio::fs::try_exists(&path).await? {
+            return Err(anyhow::anyhow!("Failed to find log file"));
+        }
+
+        let mut file = File::open(&path).await?;
+        let metadata = file.metadata().await?;
+        let file_size = metadata.len();
+
+        let mut buffer = vec![0; 8192];
+        let mut collected = Vec::new();
+        let mut carry = String::new();
+
+        let mut pos = file_size as i64;
+
+        while pos > 0 && collected.len() < n {
+            let read_size = buffer.len().min(pos as usize);
+            pos -= read_size as i64;
+
+            file.seek(SeekFrom::Start(pos as u64)).await?;
+
+            file.read_exact(&mut buffer[..read_size]).await?;
+
+            let chunk = String::from_utf8_lossy(&buffer[..read_size]);
+
+            let combined = format!("{}{}", chunk, carry);
+            let mut parts: Vec<&str> = combined.split('\n').collect();
+
+            carry = parts.remove(0).to_string();
+
+            for line in parts.into_iter().rev() {
+                if !line.is_empty() {
+                    collected.push(line.to_string());
+                    if collected.len() >= n {
+                        break;
+                    }
+                }
+            }
+        }
+
+        if !carry.is_empty() && collected.len() < n {
+            collected.push(carry);
+        }
+
+        collected.reverse();
+
+        Ok(collected)
     }
 
     pub fn placeholder() -> Logger {

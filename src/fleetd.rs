@@ -14,6 +14,7 @@ mod exec;
 mod git;
 mod ipc;
 mod logging;
+mod stats;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
