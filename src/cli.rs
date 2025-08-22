@@ -19,6 +19,8 @@ pub enum Commands {
         all: bool,
     },
 
+    Stats,
+
     Stop {
         id: String,
     },

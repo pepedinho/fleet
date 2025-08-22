@@ -10,6 +10,9 @@ use tokio::{
 use crate::ipc::server::{DaemonRequest, DaemonResponse, WatchInfo};
 
 pub async fn send_watch_request(req: DaemonRequest) -> Result<(), anyhow::Error> {
+    if let DaemonRequest::None = req {
+        return Ok(());
+    }
     let mut stream = UnixStream::connect("/tmp/fleetd.sock")
         .await
         .map_err(|e| anyhow::anyhow!("Failed to connect with daemon => {}", e))?;
@@ -49,6 +52,7 @@ fn handle_daemon_response(response: DaemonResponse) -> Result<()> {
         DaemonResponse::LogWatch(p, f) => {
             display_logs(&p, f)?;
         }
+        DaemonResponse::None => {}
     }
     Ok(())
 }
