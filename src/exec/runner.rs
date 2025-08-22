@@ -99,7 +99,6 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
                 ctx_clone.logger.job_start(&job_name).await?;
                 for step in &job_arc.steps {
                     if let Err(e) = run_step(&ctx_clone, step, &job_arc.env).await {
-                        println!("------------------JOB FAIL DEBUG-----------------");
                         ctx_clone
                             .logger
                             .error(&format!("Job {} failed: {}", job_name, e))
@@ -138,13 +137,11 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
                 Ok(inner) => match inner {
                     Ok(_) => {}
                     Err(e) => {
-                        println!("------------------ERROR TRANSMISION DEBUG-----------------");
                         ctx.logger.error(&format!("pipeline failed: {e}")).await?;
                         return Err(anyhow::anyhow!("pipeline failed: {e}"));
                     }
                 },
                 Err(e) => {
-                    println!("------------------ERROR TRANSMISION DEBUG-----------------");
                     ctx.logger.error(&format!("pipeline failed: {e}")).await?;
                     return Err(anyhow::anyhow!("pipeline failed: {e}"));
                 }
