@@ -3,7 +3,6 @@ use std::{collections::HashMap, fs::OpenOptions, time::Duration};
 
 use anyhow::Result;
 use tokio::{
-    io::{AsyncReadExt, BufReader},
     process::{Child, Command},
     time::timeout,
 };
@@ -11,8 +10,6 @@ use tokio::{
 use crate::{core::watcher::WatchContext, exec::metrics::monitor_process, logging::Logger};
 
 pub struct CommandOutput {
-    pub stdout: String,
-    pub stderr: String,
     pub status_code: Option<i32>,
     pub cpu_usage: f32,
     pub mem_usage_kb: u64,
@@ -23,15 +20,21 @@ pub async fn run_command_with_timeout(
     args: &[String],
     current_dir: &str,
     timeout_secs: u64,
+    stdout_file: std::fs::File,
+    stderr_file: std::fs::File,
     env: Option<HashMap<String, String>>,
 ) -> Result<CommandOutput> {
+    use std::process::Stdio;
+
     // Lance le process avec pipes pour stdout et stderr
     let mut cmd = Command::new(program);
 
+    let stdout_stdio = Stdio::from(stdout_file);
+    let stderr_stdio = Stdio::from(stderr_file);
     cmd.args(args)
         .current_dir(current_dir)
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped());
+        .stdout(stdout_stdio)
+        .stderr(stderr_stdio);
 
     if let Some(vars) = env {
         for (k, v) in vars {
@@ -46,40 +49,18 @@ pub async fn run_command_with_timeout(
         let _ = tx.send(metrics).await;
     });
 
-    let stdout = child.stdout.take().expect("stdout should be capture");
-    let stderr = child.stderr.take().expect("stderr should be capture");
-
-    let mut stdout_reader = BufReader::new(stdout);
-    let mut stderr_reader = BufReader::new(stderr);
-
-    let mut stdout_buf = Vec::new();
-    let mut stderr_buf = Vec::new();
-
     let duration = Duration::from_secs(timeout_secs);
 
     let run_future = async {
-        let stdout_fut = async {
-            stdout_reader.read_to_end(&mut stdout_buf).await?;
-            Result::<(), std::io::Error>::Ok(())
-        };
-        let stderr_fut = async {
-            stderr_reader.read_to_end(&mut stderr_buf).await?;
-            Result::<(), std::io::Error>::Ok(())
-        };
-
-        tokio::try_join!(stdout_fut, stderr_fut)?;
-
         let status = child.wait().await?;
 
         let (cpu_usage, mem_usage_kb) = rx.recv().await.unwrap_or((0.0, 0));
         println!("METRICS EXTRACTED => {} | {}", cpu_usage, mem_usage_kb);
-        anyhow::Ok((status, stdout_buf, stderr_buf, cpu_usage, mem_usage_kb))
+        anyhow::Ok((status, cpu_usage, mem_usage_kb))
     };
 
     match timeout(duration, run_future).await {
-        Ok(Ok((status, stdout_data, stderr_data, cpu_usage, mem_usage_kb))) => Ok(CommandOutput {
-            stdout: String::from_utf8_lossy(&stdout_data).to_string(),
-            stderr: String::from_utf8_lossy(&stderr_data).to_string(),
+        Ok(Ok((status, cpu_usage, mem_usage_kb))) => Ok(CommandOutput {
             status_code: status.code(),
             cpu_usage,
             mem_usage_kb,
@@ -133,19 +114,38 @@ pub async fn exec_timeout(
 ) -> Result<CommandOutput, anyhow::Error> {
     let program = &parts[0];
     let args = &parts[1..];
-    match run_command_with_timeout(program, args, &ctx.project_dir, timeout, env).await {
+
+    let log_path = ctx.log_path();
+
+    let stdout_file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_path)?;
+    let stderr_file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_path)?;
+    match run_command_with_timeout(
+        program,
+        args,
+        &ctx.project_dir,
+        timeout,
+        stdout_file,
+        stderr_file,
+        env,
+    )
+    .await
+    {
         Ok(output) => {
             if output.status_code != Some(0) {
                 logger
                     .error(&format!(
-                        "Command failed with exit code {:?}\nstdout:\n{}\nstderr:\n{}",
-                        output.status_code, output.stdout, output.stderr
+                        "Command failed with exit code {:?}",
+                        output.status_code
                     ))
                     .await?;
                 return Err(anyhow::anyhow!("Failed command: {:?}", parts));
             }
-            logger.info(&format!("stdout:\n{}", output.stdout)).await?;
-            logger.info(&format!("stderr:\n{}", output.stderr)).await?;
             logger.info("Command succeeded").await?;
             Ok(output)
         }
