@@ -10,6 +10,7 @@ pipeline:
   jobs:
     build:
       steps:
+        - cmd: cargo clean
         - cmd: cargo build
 
     test_rust:
@@ -17,14 +18,12 @@ pipeline:
       env:
         RUST_LOG: debug
       steps:
-        - cmd: cargo test --test cli_test
-          contaner: rust:1.89
+        - cmd: cargo test --test cli_test -- --test-threads=1
 
     echo_test:
       needs: [build]
       steps:
         - cmd: echo test 1
-          container: ubuntu:latest
 
     sleep_test:
       steps:
@@ -34,4 +33,3 @@ pipeline:
       needs: [test_rust, echo_test]
       steps:
         - cmd: echo je suis arriver a la fin
-          blocking: true
