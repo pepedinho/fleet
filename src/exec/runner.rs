@@ -187,7 +187,13 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
                         for c in ctx.config.pipeline.notifications.channels.iter() {
                             match &c.service {
                                 s if s == "discord" => {
-                                    discord_sender(&c.url, &format!("pipeline failed: {e}")).await?
+                                    discord_sender(
+                                        &c.url,
+                                        "pipeline failed:",
+                                        &e.to_string(),
+                                        0xE74C3C,
+                                    )
+                                    .await?
                                 }
                                 _ => {}
                             }
@@ -209,11 +215,13 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
                 s if s == "discord" => {
                     discord_sender(
                         &c.url,
+                        "Pipeline finish✅",
                         &format!(
-                            "Pipeline end correctly\nDURATION(Ms): {}\nCPU USAGE: {}\n",
-                            m.duration_ms.unwrap_or(0),
+                            "DURATION(sec): {:.2}s\nCPU USAGE: {:.2}%",
+                            (m.duration_ms.unwrap_or(1) as f64) / 1000.0,
                             m.cpu_usage
                         ),
+                        0x2ECC71,
                     )
                     .await?
                 }
