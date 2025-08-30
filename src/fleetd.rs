@@ -14,6 +14,7 @@ mod exec;
 mod git;
 mod ipc;
 mod logging;
+mod notifications;
 mod stats;
 
 #[tokio::main]

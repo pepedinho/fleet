@@ -26,6 +26,8 @@ force_commit = []
 clap = { version = "4.5", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
+chrono =  { version = "0.4", features = ["serde"] }
+reqwest = { version = "0.12", features = ["json"] }
 serde_yaml = "0.9"
 serde_json = "1.0"
 git2 = "0.18"
@@ -33,7 +35,6 @@ rand = "0.8"
 anyhow = "1.0"
 shell-words = "1.1"
 async-trait = "0.1"
-chrono =  { version = "0.4", features = ["serde"] }
 dirs = "6.0.0"
 sysinfo = "0.37.0"
 hex = "0.4"
