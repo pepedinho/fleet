@@ -8,7 +8,7 @@ use anyhow::Result;
 use tokio::sync::Mutex;
 
 use crate::{
-    config::parser::{Cmd, Job, ProjectConfig, check_dependency_graph},
+    config::{Cmd, Job, ProjectConfig, parser::check_dependency_graph},
     core::watcher::WatchContext,
     exec::{
         command::{CommandOutput, exec_background, exec_timeout},
@@ -16,6 +16,7 @@ use crate::{
         metrics::ExecMetrics,
     },
     logging::Logger,
+    notifications::sender::discord_sender,
 };
 
 const DEFAULT_TIMEOUT: u64 = 300;
@@ -176,6 +177,22 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
                     let mut m = metrics.lock().await;
                     m.finalize();
                     m.save().await.ok();
+                    if ctx
+                        .config
+                        .pipeline
+                        .notifications
+                        .on
+                        .contains(&"failure".to_string())
+                    {
+                        for c in ctx.config.pipeline.notifications.channels.iter() {
+                            match &c.service {
+                                s if s == "discord" => {
+                                    discord_sender(&c.url, &format!("pipeline failed: {e}")).await?
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
                     ctx.logger.error(&format!("pipeline failed: {e}")).await?;
                     return Err(anyhow::anyhow!("pipeline failed: {e}"));
                 }
@@ -187,6 +204,22 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
         let mut m = metrics.lock().await;
         m.finalize();
         m.save().await?;
+        for c in ctx.config.pipeline.notifications.channels.iter() {
+            match &c.service {
+                s if s == "discord" => {
+                    discord_sender(
+                        &c.url,
+                        &format!(
+                            "Pipeline end correctly\nDURATION(Ms): {}\nCPU USAGE: {}\n",
+                            m.duration_ms.unwrap_or(0),
+                            m.cpu_usage
+                        ),
+                    )
+                    .await?
+                }
+                _ => {}
+            }
+        }
     }
 
     Ok(())

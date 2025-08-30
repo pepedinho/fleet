@@ -7,6 +7,12 @@ ENV: &default_env
 timeout: 200
 
 pipeline:
+  # new field notifications
+  notifications:
+    on: [success, failure]
+    channels:
+      - service: discord
+        url: https://discord.com/api/webhooks/REDACTED_WEBHOOK_ID/REDACTED_WEBHOOK_TOKEN
   jobs:
     build:
       steps:
