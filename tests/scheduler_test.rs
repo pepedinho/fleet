@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fs, sync::Arc};
 
 use core_lib::{
-    config::parser::{Cmd, Job, Pipeline, ProjectConfig},
+    config::{Cmd, Job, Pipeline, ProjectConfig},
     core::watcher::{WatchContext, WatchContextBuilder},
     exec::runner::run_pipeline,
     git::repo::Repo,
