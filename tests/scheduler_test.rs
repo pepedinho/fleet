@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fs, sync::Arc};
 
 use core_lib::{
-    config::parser::{Cmd, Job, Pipeline, ProjectConfig},
+    config::{Cmd, Job, Pipeline, ProjectConfig},
     core::watcher::{WatchContext, WatchContextBuilder},
     exec::runner::run_pipeline,
     git::repo::Repo,
@@ -18,7 +18,10 @@ fn build_repo() -> Repo {
 
 async fn build_test_ctx(id: &str, jobs: HashMap<String, Job>) -> anyhow::Result<Arc<WatchContext>> {
     let config = ProjectConfig {
-        pipeline: Pipeline { jobs },
+        pipeline: Pipeline {
+            jobs,
+            ..Default::default()
+        },
         branch: None,
         timeout: None,
     };
@@ -481,7 +484,10 @@ async fn test_timeout_job() -> anyhow::Result<()> {
     .collect();
 
     let config = ProjectConfig {
-        pipeline: Pipeline { jobs },
+        pipeline: Pipeline {
+            jobs,
+            ..Default::default()
+        },
         branch: None,
         timeout: Some(2),
     };

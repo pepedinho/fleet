@@ -8,7 +8,7 @@ use anyhow::Result;
 use tokio::sync::Mutex;
 
 use crate::{
-    config::parser::{Cmd, Job, ProjectConfig, check_dependency_graph},
+    config::{Cmd, Job, ProjectConfig, parser::check_dependency_graph},
     core::watcher::WatchContext,
     exec::{
         command::{CommandOutput, exec_background, exec_timeout},
@@ -16,6 +16,7 @@ use crate::{
         metrics::ExecMetrics,
     },
     logging::Logger,
+    notifications::sender::discord_sender,
 };
 
 const DEFAULT_TIMEOUT: u64 = 300;
@@ -176,6 +177,28 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
                     let mut m = metrics.lock().await;
                     m.finalize();
                     m.save().await.ok();
+                    if ctx
+                        .config
+                        .pipeline
+                        .notifications
+                        .on
+                        .contains(&"failure".to_string())
+                    {
+                        for c in ctx.config.pipeline.notifications.channels.iter() {
+                            match &c.service {
+                                s if s == "discord" => {
+                                    discord_sender(
+                                        &c.url,
+                                        "pipeline failed:",
+                                        &e.to_string(),
+                                        0xE74C3C,
+                                    )
+                                    .await?
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
                     ctx.logger.error(&format!("pipeline failed: {e}")).await?;
                     return Err(anyhow::anyhow!("pipeline failed: {e}"));
                 }
@@ -187,6 +210,24 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
         let mut m = metrics.lock().await;
         m.finalize();
         m.save().await?;
+        for c in ctx.config.pipeline.notifications.channels.iter() {
+            match &c.service {
+                s if s == "discord" => {
+                    discord_sender(
+                        &c.url,
+                        "Pipeline finish✅",
+                        &format!(
+                            "DURATION(sec): {:.2}s\nCPU USAGE: {:.2}%",
+                            (m.duration_ms.unwrap_or(1) as f64) / 1000.0,
+                            m.cpu_usage
+                        ),
+                        0x2ECC71,
+                    )
+                    .await?
+                }
+                _ => {}
+            }
+        }
     }
 
     Ok(())

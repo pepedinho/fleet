@@ -6,4 +6,5 @@ pub mod exec;
 pub mod git;
 pub mod ipc;
 pub mod logging;
+pub mod notifications;
 pub mod stats;

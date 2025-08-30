@@ -5,41 +5,8 @@ use std::{
 };
 
 use anyhow::{Context, Ok, Result};
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub struct Cmd {
-    pub cmd: String,
-    #[serde(default)]
-    pub blocking: bool,
-    #[serde(default)]
-    pub container: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
-pub struct Job {
-    #[serde(default)]
-    pub needs: Vec<String>,
-    #[serde(default)]
-    pub env: Option<HashMap<String, String>>,
-    pub steps: Vec<Cmd>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq)]
-pub struct Pipeline {
-    pub jobs: HashMap<String, Job>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Default, Clone, PartialEq)]
-pub struct ProjectConfig {
-    pub pipeline: Pipeline,
-
-    #[serde(default)]
-    pub branch: Option<String>,
-
-    #[serde(default)]
-    pub timeout: Option<u64>,
-}
+use crate::config::{Job, ProjectConfig};
 
 pub fn check_dependency_graph(config: &ProjectConfig) -> Result<()> {
     let pipeline = &config.pipeline;
@@ -121,6 +88,8 @@ pub fn load_config(path: &Path) -> Result<ProjectConfig> {
     }
 
     check_dependency_graph(&config)?;
+
+    dbg!(&config);
 
     Ok(config)
 }
