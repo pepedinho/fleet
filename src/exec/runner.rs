@@ -16,7 +16,7 @@ use crate::{
         metrics::ExecMetrics,
     },
     logging::Logger,
-    notifications::sender::discord_sender,
+    notifications::sender::{discord_send_failure, discord_send_succes},
 };
 
 const DEFAULT_TIMEOUT: u64 = 300;
@@ -184,20 +184,7 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
                         .on
                         .contains(&"failure".to_string())
                     {
-                        for c in ctx.config.pipeline.notifications.channels.iter() {
-                            match &c.service {
-                                s if s == "discord" => {
-                                    discord_sender(
-                                        &c.url,
-                                        "pipeline failed:",
-                                        &e.to_string(),
-                                        0xE74C3C,
-                                    )
-                                    .await?
-                                }
-                                _ => {}
-                            }
-                        }
+                        discord_send_failure(&ctx, &e).await?;
                     }
                     ctx.logger.error(&format!("pipeline failed: {e}")).await?;
                     return Err(anyhow::anyhow!("pipeline failed: {e}"));
@@ -210,24 +197,7 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
         let mut m = metrics.lock().await;
         m.finalize();
         m.save().await?;
-        for c in ctx.config.pipeline.notifications.channels.iter() {
-            match &c.service {
-                s if s == "discord" => {
-                    discord_sender(
-                        &c.url,
-                        "Pipeline finish✅",
-                        &format!(
-                            "DURATION(sec): {:.2}s\nCPU USAGE: {:.2}%",
-                            (m.duration_ms.unwrap_or(1) as f64) / 1000.0,
-                            m.cpu_usage
-                        ),
-                        0x2ECC71,
-                    )
-                    .await?
-                }
-                _ => {}
-            }
-        }
+        discord_send_succes(&ctx, &m).await?;
     }
 
     Ok(())

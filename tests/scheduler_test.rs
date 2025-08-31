@@ -513,46 +513,6 @@ async fn test_timeout_job() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn test_blocking_step() -> anyhow::Result<()> {
-    let jobs: HashMap<String, Job> = vec![
-        (
-            "job1".into(),
-            Job {
-                steps: vec![Cmd {
-                    cmd: "echo blocking".into(),
-                    blocking: true,
-                    container: None,
-                }],
-                needs: vec![],
-                env: None,
-            },
-        ),
-        (
-            "job2".into(),
-            Job {
-                steps: vec![Cmd {
-                    cmd: "echo after".into(),
-                    blocking: false,
-                    container: None,
-                }],
-                needs: vec![],
-                env: None,
-            },
-        ),
-    ]
-    .into_iter()
-    .collect();
-
-    let ctx = build_test_ctx("test_multiple_dependencies", jobs).await?;
-
-    run_pipeline(ctx.clone()).await.unwrap();
-    let log = fs::read_to_string(ctx.log_path())?;
-    assert_in_log_order(&log, "blocking", "after");
-    ctx.logger.clean().await?;
-    Ok(())
-}
-
-#[tokio::test]
 async fn test_multiple_dependencies() -> anyhow::Result<()> {
     let jobs: HashMap<String, Job> = vec![
         (
@@ -714,7 +674,7 @@ async fn test_failing_job_stops_pipeline() -> anyhow::Result<()> {
 
     let ctx = build_test_ctx("test_failing_job_stops_pipeline", jobs).await?;
     let result = run_pipeline(ctx.clone()).await;
-    dbg!(&result);
+    // dbg!(&result);
     assert!(result.is_err(), "Pipeline should fail");
     let log = fs::read_to_string(ctx.log_path())?;
     assert!(

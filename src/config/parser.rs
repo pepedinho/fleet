@@ -37,7 +37,7 @@ pub fn check_dependency_graph(config: &ProjectConfig) -> Result<()> {
             return Ok(());
         }
         if !temp.insert(name.to_string()) {
-            let cycle_start_index = path.iter().position(|n| n == name).unwrap_or(0);
+            let cycle_start_index: usize = path.iter().position(|n| n == name).unwrap_or(0);
             let cycle_path: Vec<_> = path[cycle_start_index..]
                 .iter()
                 .chain(std::iter::once(&name.to_string()))
@@ -89,7 +89,7 @@ pub fn load_config(path: &Path) -> Result<ProjectConfig> {
 
     check_dependency_graph(&config)?;
 
-    dbg!(&config);
+    // dbg!(&config);
 
     Ok(config)
 }
