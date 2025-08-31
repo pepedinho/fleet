@@ -18,7 +18,6 @@ pipeline:
   jobs:
     build:
       steps:
-        - cmd: cargo clean
         - cmd: cargo build
 
     test_rust:
