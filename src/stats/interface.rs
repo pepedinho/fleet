@@ -32,7 +32,8 @@ pub struct ProjectMetrics {
     pub finished_at: chrono::DateTime<chrono::Utc>,
     pub duration_ms: u128,
     pub cpu_usage: f32,
-    pub mem_usage_kb: f32,
+    pub mem_usage_kb: u64,
+    pub mem_usage: f32,
     pub max_cpu: f32,
     pub max_mem: f32,
     pub jobs: HashMap<String, JobMetrics>,
@@ -44,6 +45,9 @@ pub struct ProjectStats {
     pub last_duration: String,
     pub avg_cpu: f32,
     pub avg_mem: f32,
+    pub max_cpu: f32,
+    pub max_mem: f32,
+    pub mem_kb: u64,
     pub runs: usize,
     pub last_logs: Vec<String>,
 }
@@ -184,13 +188,14 @@ pub async fn load_all_stats() -> Result<Vec<ProjectStats>> {
 
         let runs_count = runs.len();
         let avg_cpu = runs.iter().map(|r| r.cpu_usage).sum::<f32>() / runs_count as f32;
-        let avg_mem = runs.iter().map(|r| r.mem_usage_kb).sum::<f32>() / runs_count as f32;
+        let avg_mem = runs.iter().map(|r| r.mem_usage).sum::<f32>() / runs_count as f32;
 
         let last = runs.iter().max_by_key(|r| r.finished_at).unwrap();
         let last_duration = format!("{} ms", last.duration_ms);
         let last_logs = Logger::fetchn(&id, 5)
             .await
             .unwrap_or_else(|e| vec![format!("Error: {e}")]);
+        let avg_mem_kb = runs.iter().map(|r| r.mem_usage_kb).sum::<u64>() / runs_count as u64;
 
         stats.push(ProjectStats {
             id,
@@ -200,6 +205,9 @@ pub async fn load_all_stats() -> Result<Vec<ProjectStats>> {
             avg_mem,
             runs: runs_count,
             last_logs,
+            max_cpu: last.max_cpu,
+            max_mem: last.max_mem,
+            mem_kb: avg_mem_kb,
         });
     }
     // dbg!(&stats);
