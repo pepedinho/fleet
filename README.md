@@ -19,6 +19,8 @@ Its goal is to make **continuous deployment and synchronization** easy without r
 * Detect cyclic dependencies in pipeline jobs
 * Optional per-step environment variables and container execution
 * Respect blocking and non-blocking step configuration
+* **Notifications** on pipeline completion (only discord for now)
+* **Statistics overview** of watched projects with CPU/memory usage and success/failure counts
 
 ---
 
@@ -39,7 +41,7 @@ make install
 
 ### `fleet watch`
 
-Add a project to the watch list. (you must run this command in the directory of the project to be monitored)
+Add a project to the watch list. (You must run this command in the directory of the project to be monitored)
 
 ```bash
 fleet watch
@@ -85,6 +87,20 @@ Remove a monitored project from the watch list.
 
 ---
 
+### `fleet stats`
+
+Shows an interactive overview of all watched projects:
+
+* Each project is a row with columns:
+
+  * Project ID
+  * Project name
+  * Last pipeline duration
+  * CPU & memory usage during last run
+  * Number of pipeline runs
+
+---
+
 ## YAML Configuration
 
 Each project has a `fleet.yml` file defining its pipelines process.
@@ -95,6 +111,11 @@ Each project has a `fleet.yml` file defining its pipelines process.
 timeout: 200 # Timeout in seconds for non-blocking commands (default 300)
 
 pipeline:
+  notifications:
+    on: [success, failure] # events to notify
+    channels:
+      - type: discord
+        url: https://discord.com/api/webhooks/...
   jobs:
     build:
       steps:
@@ -118,6 +139,7 @@ pipeline:
       steps:
         - cmd: echo je suis arriver a la fin
           blocking: true
+
 ```
 
 ### Key Points
@@ -129,8 +151,7 @@ pipeline:
   * `blocking: false` (default) → Run asynchronously with timeout.
   * `env` → Optional environment variables for steps.
   * `container` → Optional Docker container to execute step.
-* **on\_conflict**: Commands to run when a Git conflict is detected.
-* **post\_update**: Commands to run after updates complete.
+  * `notifications` → Configure external notifications on pipeline events (success/failure).
 
 ---
 
@@ -146,4 +167,6 @@ pipeline:
    * Step-specific environment variables and container execution are supported.
    * If a conflict occurs, `on_conflict` commands are executed.
    * Finally, `post_update` commands run.
+   * Notifications are sent to configured channels (Discord, Slack, webhook) based on success/failure.
 3. Logs for each project are stored and retrievable via `fleet logs`.
+4. `fleet stats` provides an interactive overview of all watched projects.
