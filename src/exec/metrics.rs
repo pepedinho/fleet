@@ -30,7 +30,8 @@ pub struct JobMetrics {
     pub finished_at: Option<DateTime<Utc>>,
     pub duration_ms: Option<u128>,
     pub cpu_usage: f32,
-    pub mem_usage_kb: f32,
+    pub mem_usage: f32,
+    pub mem_usage_kb: u64,
     pub max_cpu: f32,
     pub max_mem: f32,
     #[serde(skip)]
@@ -47,7 +48,8 @@ pub struct ExecMetrics {
     pub duration_ms: Option<u128>,
 
     pub cpu_usage: f32,
-    pub mem_usage_kb: f32,
+    pub mem_usage: f32,
+    pub mem_usage_kb: u64,
     pub max_cpu: f32,
     pub max_mem: f32,
 
@@ -66,7 +68,8 @@ impl ExecMetrics {
             finished_at: None,
             duration_ms: None,
             cpu_usage: 0.0,
-            mem_usage_kb: 0.0,
+            mem_usage: 0.0,
+            mem_usage_kb: 0,
             max_cpu: 0.0,
             max_mem: 0.0,
             jobs: std::collections::HashMap::new(),
@@ -88,38 +91,40 @@ impl ExecMetrics {
             end.signed_duration_since(self.started_at)
                 .num_milliseconds() as u128,
         );
-        let v: Vec<(f32, f32)> = self
+        let v: Vec<(f32, f32, u64)> = self
             .jobs
             .values()
-            .map(|v| (v.cpu_usage, v.mem_usage_kb))
+            .map(|v| (v.cpu_usage, v.mem_usage, v.mem_usage_kb))
             .collect();
 
         if !v.is_empty() {
             let mut sys = sysinfo::System::new_all();
             sys.refresh_memory();
-            let total_memory_kb = sys.total_memory() as f32;
-            let cpu_sum: f32 = v.iter().map(|(cpu, _)| *cpu).sum();
+            let cpu_sum: f32 = v.iter().map(|(cpu, _, _)| *cpu).sum();
             let cpu_count = v.len() as f32;
             let average_cpu = cpu_sum / cpu_count;
 
-            let max_cpu = v.iter().map(|(cpu, _)| *cpu).fold(0.0_f32, |a, b| a.max(b));
-
-            let mem_percentages: Vec<f32> = v
+            let max_cpu = v
                 .iter()
-                .map(|(_, mem)| (*mem / total_memory_kb) * 100.0)
-                .collect();
+                .map(|(cpu, _, _)| *cpu)
+                .fold(0.0_f32, |a, b| a.max(b));
+
+            let mem_usage_kb: Vec<u64> = v.iter().map(|(_, _, mem)| *mem).collect();
+            let avg_mem_usage_kb = mem_usage_kb.iter().sum::<u64>();
+
+            let mem_percentages: Vec<f32> = v.iter().map(|(_, mem, _)| *mem).collect(); // déjà en %
             let average_mem_percent: f32 =
                 mem_percentages.iter().sum::<f32>() / mem_percentages.len() as f32;
             let max_mem_percent: f32 = mem_percentages.iter().fold(0.0, |a, b| a.max(*b));
 
             self.cpu_usage = average_cpu;
-            self.mem_usage_kb = average_mem_percent;
+            self.mem_usage_kb = avg_mem_usage_kb;
+            self.mem_usage = average_mem_percent;
             self.max_cpu = max_cpu;
             self.max_mem = max_mem_percent;
         } else {
-            // Cas où aucun job n'est présent
             self.cpu_usage = 0.0;
-            self.mem_usage_kb = 0.0;
+            self.mem_usage_kb = 0;
             self.max_cpu = 0.0;
             self.max_mem = 0.0;
         }
@@ -136,7 +141,8 @@ impl ExecMetrics {
                 finished_at: None,
                 duration_ms: None,
                 cpu_usage: 0.0,
-                mem_usage_kb: 0.0,
+                mem_usage: 0.0,
+                mem_usage_kb: 0,
                 max_cpu: 0.0,
                 max_mem: 0.0,
                 buf: Vec::new(),
@@ -156,6 +162,9 @@ impl ExecMetrics {
                 let average_cpu = cpu_sum / count;
                 let max_cpu = j.buf.iter().map(|(v, _)| *v).fold(0.0_f32, |a, b| a.max(b));
 
+                let mem_usage_kb: Vec<u64> = j.buf.iter().map(|(_, mem)| *mem).collect();
+                let avg_mem_usage_kb = mem_usage_kb.iter().sum::<u64>();
+
                 let mem_percentages: Vec<f32> = j
                     .buf
                     .iter()
@@ -166,7 +175,8 @@ impl ExecMetrics {
                 let max_mem_percent: f32 = mem_percentages.iter().fold(0.0, |a, b| a.max(*b));
 
                 j.cpu_usage = average_cpu;
-                j.mem_usage_kb = average_mem_percent;
+                j.mem_usage_kb = avg_mem_usage_kb;
+                j.mem_usage = average_mem_percent;
                 j.max_mem = max_mem_percent;
                 j.max_cpu = max_cpu;
             }
@@ -199,7 +209,8 @@ impl ExecMetrics {
         let dir = Self::ensure_metrics_dir().await?;
         let path = dir.join(format!("{project_id}.ndjson"));
         let file = tokio::fs::OpenOptions::new()
-            .append(true)
+            .write(true)
+            .truncate(true)
             .create(true)
             .open(path)
             .await?;
