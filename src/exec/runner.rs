@@ -128,7 +128,7 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
                             {
                                 let err = e.to_string();
                                 let lines: Vec<&str> = err.lines().collect();
-                                let first_line = lines.get(0).unwrap_or(&"");
+                                let first_line = lines.first().unwrap_or(&"");
                                 let second_line = lines.get(1).unwrap_or(&"");
                                 discord_send_failure(
                                     &ctx_clone,
