@@ -52,8 +52,7 @@ Its goal is to make **continuous deployment and synchronization** simple without
 
 
 ```bash
-# Clone the reposito![Wikipedia_iOS_Sticker_-_Idea_2](https://github.com/user-attachments/assets/7ea987db-7193-461b-a715-9ecf02e8c76c)
-ry
+# Clone the repository
 git clone https://github.com/pepedinho/fleet.git
 cd fleet
 
