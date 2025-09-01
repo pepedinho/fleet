@@ -8,7 +8,17 @@ When generating a Pull Request description, provide a clear, developer-oriented 
 
 1. **Title**
 
-   * Always include a clear title summarizing the PR in one sentence.
+   * Always include a `## Title` section at the very top of the PR.
+   * Do not just write the first sentence as a title; include the heading and the title text.
+   * Example:
+
+     ```markdown
+     ## Title
+     Fix crash when loading empty configuration files
+
+     ## Summary
+     This PR addresses a crash caused by empty configuration files by adding default checks and validations.
+     ```
 
 2. **Summary**
 
@@ -21,7 +31,7 @@ When generating a Pull Request description, provide a clear, developer-oriented 
 
 4. **Before / After Examples**
 
-   * q or new features.
+   * Always include minimal examples to illustrate behavior changes or new features.
    * Examples must be shown in fenced code blocks.
    * Two acceptable formats:
 
@@ -70,3 +80,22 @@ When generating a Pull Request description, provide a clear, developer-oriented 
    * Avoid long sentences or unnecessary explanations.
    * Always show examples inside code blocks.
    * Never use `@@` diffhunks or omit relevant lines. Show the minimal but complete change.
+
+## Example PR Description Template
+
+```markdown
+## Title
+<Write a one-line summary of the PR>
+
+## Summary
+<Brief explanation of the PR>
+
+## Changes
+- <Bullet points of changes>
+
+## Before / After Examples
+<Code snippets showing changes>
+
+## Notes
+<Any additional notes>
+```
