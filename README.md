@@ -1,5 +1,5 @@
 <h1>
-  <img src="https://github.com/user-attachments/assets/30281fa1-3b9e-4ba9-a865-050467f2a509" alt="brain" width="50" height="50"/>
+  <img src="https://github.com/user-attachments/assets/429bf6e8-5724-473e-a560-e9e06bbbc143" alt="brain" width="30" height="30"/>
   Fleet
 </h1>
 
