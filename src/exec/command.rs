@@ -153,7 +153,8 @@ pub async fn exec_timeout(
             logger
                 .error(&format!("Command error or timeout: {parts:?}"))
                 .await?;
-            Err(e)
+            logger.error(&e.to_string()).await?;
+            Err(anyhow::anyhow!("**Command error:**: `{parts:?}`\n{e}"))
         }
     }
 }

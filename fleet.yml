@@ -13,8 +13,6 @@ pipeline:
     channels:
       - service: discord
         url: https://discord.com/api/webhooks/REDACTED_WEBHOOK_ID/REDACTED_WEBHOOK_TOKEN
-      - service: discord
-        url: https://discord.com/api/webhooks/1411470873298469004/HfqOWWj1i90mSagePCJglL66RhNylWoAm2qH9jduPO8g_kAM9usvjeaT-hJJJOxCzz24 
   jobs:
     build:
       steps:
