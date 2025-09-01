@@ -1,13 +1,34 @@
-# Fleet
+<h1>
+  <img src="https://github.com/user-attachments/assets/30281fa1-3b9e-4ba9-a865-050467f2a509" alt="brain" width="50" height="50"/>
+  Fleet
+</h1>
+
+![Rust](https://img.shields.io/badge/rust-stable-orange)
 
 Fleet is a lightweight Rust-based tool for **automated repository monitoring and updating**.
-It runs a background daemon (`fleetd`) that watches your Git repositories, detects changes on remote branches, and executes predefined update commands when changes are found.
+It runs a background daemon (`fleetd`) that watches your Git repositories, detects remote changes, and executes predefined update commands.
 
-Its goal is to make **continuous deployment and synchronization** easy without relying on heavy CI/CD pipelines.
+Its goal is to make **continuous deployment and synchronization** simple without relying on heavy CI/CD pipelines.
 
 ---
 
-## Features
+<h2>
+  <img src="https://github.com/user-attachments/assets/4bf0a9f7-f5b7-4401-9b3d-fc92523cb79c" alt="brain" width="30" height="30"/>
+  Summary
+</h2>
+
+* [Features](#features)
+* [Quick Start](#quick-start)
+* [Commands](#commands)
+* [Configuration](#configuration)
+* [How It Works](#how-it-works)
+
+---
+
+<h2 id="features">
+  <img src="https://github.com/user-attachments/assets/dc7fc109-abb2-443a-9bc3-8f6721cdd1e8" alt="brain" width="40" height="40"/>
+  Features
+</h2>
 
 * Watch multiple repositories at once
 * Automatically detect new commits on remote branches
@@ -19,29 +40,28 @@ Its goal is to make **continuous deployment and synchronization** easy without r
 * Detect cyclic dependencies in pipeline jobs
 * Optional per-step environment variables and container execution
 * Respect blocking and non-blocking step configuration
-* **Notifications** on pipeline completion (only discord for now)
-* **Statistics overview** of watched projects with CPU/memory usage and success/failure counts
+* Notifications on pipeline completion (only discord for now)
+* Statistics overview of watched projects with CPU/memory usage and success/failure counts
 
 ---
 
-## Installation
+<h2 id="quick-start">
+  <img src="https://github.com/user-attachments/assets/e0fdb113-496a-4d47-91a5-008166f355a8" alt="brain" width="40" height="25"/>
+  Quick Start
+</h2>
+
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/fleet.git
+# Clone the reposito![Wikipedia_iOS_Sticker_-_Idea_2](https://github.com/user-attachments/assets/7ea987db-7193-461b-a715-9ecf02e8c76c)
+ry
+git clone https://github.com/pepedinho/fleet.git
 cd fleet
 
-# install fleet
+# Install fleet
 make install
 ```
 
----
-
-## Commands
-
-### `fleet watch`
-
-Add a project to the watch list. (You must run this command in the directory of the project to be monitored)
+Add your first project:
 
 ```bash
 fleet watch
@@ -49,73 +69,45 @@ fleet watch
 
 ---
 
-### `fleet logs [id | name]`
 
-Show logs for a given project.
+<h2 id="commands">
+  <img src="https://github.com/user-attachments/assets/4444209c-0c59-4757-aad1-b0956226d7b9" alt="brain" width="30" height="30"/>
+  Commands
+</h2>
 
-* **Without arguments:**
-  Shows logs for the project in the current directory (if watched).
-* **With `id` or `name`:**
-  Shows logs for the specified project.
-
----
-
-### `fleet ps`
-
-List watched projects.
-
-* Default: only active watches
-* `-a`: also show stopped projects
+| Command                 | Description                                                                            |
+| ----------------------- | -----------------------------------------------------------------------------          |
+| `fleet watch`           | Add a project to the watch list (run inside the project dir) (`-b` to assign branch)   |
+| `fleet logs [id\|name]` | Show logs for a project (current dir by default) (`-f` to follow logs)                 |
+| `fleet ps`              | List watched projects (`-a` to show stopped projects)                                  |
+| `fleet stop <id>`       | Stop watching a project                                                                |
+| `fleet up <id>`         | Resume watching a stopped project                                                      |
+| `fleet rm <id>`         | Remove a monitored project                                                             |
+| `fleet stats`           | Show interactive statistics of all watched projects                                    |
 
 ---
 
-### `fleet stop <id>`
 
-Stop watching a project by ID.
+<h2 id="configuration">
+  <img src="https://github.com/user-attachments/assets/47ba484c-3bec-43d4-8b50-1e03456709c2" alt="brain" width="30" height="30"/>
+  Configuration
+</h2>
 
----
+Each project defines its pipelines with a `fleet.yml` file.
 
-### `fleet up <id>`
-
-Resume watching a previously stopped project.
-
----
-
-### `fleet rm <id>`
-
-Remove a monitored project from the watch list.
-
----
-
-### `fleet stats`
-
-Shows an interactive overview of all watched projects:
-
-* Each project is a row with columns:
-
-  * Project ID
-  * Project name
-  * Last pipeline duration
-  * CPU & memory usage during last run
-  * Number of pipeline runs
-
----
-
-## YAML Configuration
-
-Each project has a `fleet.yml` file defining its pipelines process.
-
-### Example `.fleet.yml`
+<details>
+<summary>Example fleet.yml</summary>
 
 ```yaml
 timeout: 200 # Timeout in seconds for non-blocking commands (default 300)
 
 pipeline:
   notifications:
-    on: [success, failure] # events to notify
+    on: [success, failure]
     channels:
       - type: discord
         url: https://discord.com/api/webhooks/...
+
   jobs:
     build:
       steps:
@@ -137,36 +129,43 @@ pipeline:
     deploy:
       needs: [test_rust, echo_test]
       steps:
-        - cmd: echo je suis arriver a la fin
+        - cmd: echo "deploy complete"
           blocking: true
-
 ```
 
-### Key Points
+</details>
 
-* **timeout**: Global timeout for non-blocking commands.
-* **pipeline**: Define jobs, their dependencies (`needs`), and execution steps.
+**Key Points:**
 
-  * `blocking: true` → fire and forget.
-  * `blocking: false` (default) → Run asynchronously with timeout.
-  * `env` → Optional environment variables for steps.
-  * `container` → Optional Docker container to execute step.
-  * `notifications` → Configure external notifications on pipeline events (success/failure).
+* `timeout` → global timeout for async jobs (default 300s).
+* `needs` → define dependencies between jobs.
+* `blocking: true` → fire and forget.
+* `env` → per-step environment variables.
+* `container` → run step in Docker container.
+* `notifications` → external alerts (success/failure).
 
 ---
+<h2 id="how-it-works">
+  <img src="https://github.com/user-attachments/assets/a18b44ad-ff8b-4d7f-a7ae-5fafa8d19449" alt="brain" width="30" height="30"/>
+  How It Works
+</h2>
 
-## How It Works
+<details>
+<summary>Detailed workflow</summary>
 
-1. `fleetd` runs in the background, periodically checking for updates.
-2. When a new commit is found:
+1. `fleetd` runs in the background and periodically checks repositories.
+2. When a new commit is detected:
 
-   * The pipeline jobs are executed respecting dependencies and blocking configuration.
-   * Jobs run in parallel when independent.
-   * If a job fails, dependent jobs are not executed and the failure is propagated.
-   * Cyclic dependencies are detected at pipeline start and reported as errors.
-   * Step-specific environment variables and container execution are supported.
-   * If a conflict occurs, `on_conflict` commands are executed.
-   * Finally, `post_update` commands run.
-   * Notifications are sent to configured channels (Discord, Slack, webhook) based on success/failure.
+   * Jobs are executed respecting dependencies.
+   * Independent jobs run in parallel.
+   * Failures propagate and block dependent jobs.
+   * Cyclic dependencies are detected and reported before execution.
+   * Environment variables and containers are supported per step.
+   * `on_conflict` and `post_update` hooks can be executed.
+   * Notifications are sent to configured channels (Discord, webhook, etc.).
 3. Logs for each project are stored and retrievable via `fleet logs`.
-4. `fleet stats` provides an interactive overview of all watched projects.
+4. Global statistics are available via `fleet stats`.
+
+</details>
+
+---
