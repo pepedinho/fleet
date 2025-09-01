@@ -30,18 +30,22 @@ Its goal is to make **continuous deployment and synchronization** simple without
   Features
 </h2>
 
-* Watch multiple repositories at once
-* Automatically detect new commits on remote branches
-* Execute update scripts when changes are found
-* Per-project logs accessible via CLI
-* Start, stop, and resume repository watches dynamically
-* YAML-based configuration for flexible update workflows
-* Parallel and sequential job execution in pipelines
-* Detect cyclic dependencies in pipeline jobs
-* Optional per-step environment variables and container execution
-* Respect blocking and non-blocking step configuration
-* Notifications on pipeline completion (only discord for now)
+
+<img src="https://github.com/user-attachments/assets/7f0beeba-138f-4e43-8c6f-86159bc63cab" width="300" align="right" />
+
+* Watch multiple repositories at once  
+* Automatically detect new commits on remote branches  
+* Execute update scripts when changes are found  
+* Per-project logs accessible via CLI  
+* Start, stop, and resume repository watches dynamically  
+* YAML-based configuration for flexible update workflows  
+* Parallel and sequential job execution in pipelines  
+* Detect cyclic dependencies in pipeline jobs  
+* Optional per-step environment variables and container execution  
+* Respect blocking and non-blocking step configuration  
+* Notifications on pipeline completion (only discord for now)  
 * Statistics overview of watched projects with CPU/memory usage and success/failure counts
+
 
 ---
 
