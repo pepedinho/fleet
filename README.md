@@ -164,7 +164,6 @@ pipeline:
    * Failures propagate and block dependent jobs.
    * Cyclic dependencies are detected and reported before execution.
    * Environment variables and containers are supported per step.
-   * `on_conflict` and `post_update` hooks can be executed.
    * Notifications are sent to configured channels (Discord, webhook, etc.).
 3. Logs for each project are stored and retrievable via `fleet logs`.
 4. Global statistics are available via `fleet stats`.
