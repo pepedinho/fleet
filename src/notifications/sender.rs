@@ -72,10 +72,12 @@ pub async fn discord_send_succes(ctx: &WatchContext, m: &ExecMetrics) -> Result<
     Ok(())
 }
 
-pub async fn discord_send_failure<E: std::error::Error>(ctx: &WatchContext, e: E) -> Result<()> {
+/// this function take ctx and msg
+/// msg will be split on ":/:" pattern and divide in field
+pub async fn discord_send_failure(ctx: &WatchContext, msg: &str) -> Result<()> {
     let embed = DiscordEmbed {
         title: "❌ Pipeline failed".into(),
-        description: format!("Error: {}", &e.to_string()),
+        description: String::from(msg),
         color: 0xE74C3C,
         fields: vec![],
         footer: None,

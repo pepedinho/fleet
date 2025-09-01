@@ -109,6 +109,7 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
                     m.job_started(&job_name);
                 }
                 // exec all job step
+                println!("logger job start");
                 ctx_clone.logger.job_start(&job_name).await?;
                 for step in &job_arc.steps {
                     match run_step(&ctx_clone, step, &job_arc.env).await {
@@ -118,9 +119,31 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
                         }
                         Ok(None) => {}
                         Err(e) => {
+                            if ctx_clone
+                                .config
+                                .pipeline
+                                .notifications
+                                .on
+                                .contains(&"failure".to_string())
+                            {
+                                let err = e.to_string();
+                                let lines: Vec<&str> = err.lines().collect();
+                                let first_line = lines.get(0).unwrap_or(&"");
+                                let second_line = lines.get(1).unwrap_or(&"");
+                                discord_send_failure(
+                                    &ctx_clone,
+                                    &format!(
+                                        "**Job** `{}` **failed**
+                                        {}
+                                        **Error:** `{}`",
+                                        job_name, first_line, second_line,
+                                    ),
+                                )
+                                .await?;
+                            }
                             ctx_clone
                                 .logger
-                                .error(&format!("Job {} failed: {}", job_name, e))
+                                .error(&format!("Job {} failed", job_name))
                                 .await?;
                             {
                                 let mut m = metrics_clone.lock().await;
@@ -177,15 +200,6 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
                     let mut m = metrics.lock().await;
                     m.finalize();
                     m.save().await.ok();
-                    if ctx
-                        .config
-                        .pipeline
-                        .notifications
-                        .on
-                        .contains(&"failure".to_string())
-                    {
-                        discord_send_failure(&ctx, &e).await?;
-                    }
                     ctx.logger.error(&format!("pipeline failed: {e}")).await?;
                     return Err(anyhow::anyhow!("pipeline failed: {e}"));
                 }
@@ -247,7 +261,6 @@ async fn background_process(
     match exec_background(parts.clone(), ctx, logger, env).await {
         Ok(_) => {}
         Err(e) => {
-            logger.error(&format!("Failed: {e}")).await?;
             return Err(e);
         }
     };
@@ -263,9 +276,6 @@ async fn timeout_process(
 ) -> Result<CommandOutput, anyhow::Error> {
     match exec_timeout(parts.clone(), ctx, logger, default_timeout, env).await {
         Ok(o) => Ok(o),
-        Err(e) => {
-            logger.error(&format!("Failed: {e}")).await?;
-            Err(e)
-        }
+        Err(e) => Err(e),
     }
 }
