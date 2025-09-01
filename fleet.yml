@@ -28,7 +28,6 @@ pipeline:
     echo_test:
       needs: [build]
       steps:
-        - cmd: sdsds
         - cmd: echo test 1
 
     sleep_test:
