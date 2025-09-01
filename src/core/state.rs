@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 use std::{collections::HashMap, path::PathBuf};
 
-use crate::core::watcher::WatchContext;
-use anyhow::{Ok, Result};
+use crate::{core::watcher::WatchContext, logging::Logger};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use tokio::{fs, sync::RwLock};
 
@@ -14,11 +14,13 @@ pub struct AppState {
 impl AppState {
     pub async fn load_from_disk() -> Result<Self, anyhow::Error> {
         let registry = load_watches().await?;
-        let watches: HashMap<String, WatchContext> = registry
-            .projects
-            .into_iter()
-            .map(|ctx| (ctx.id.clone(), ctx))
-            .collect();
+        let mut watches: HashMap<String, WatchContext> = HashMap::new();
+
+        for mut ctx in registry.projects {
+            let logger = Logger::new(&ctx.log_path()).await?;
+            ctx.logger = logger;
+            watches.insert(ctx.id.clone(), ctx);
+        }
 
         Ok(Self {
             watches: RwLock::new(watches),
