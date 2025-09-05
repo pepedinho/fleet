@@ -98,8 +98,7 @@ fleet watch
 
 Each project defines its pipelines with a `fleet.yml` file.
 
-<details>
-<summary>Example fleet.yml</summary>
+**Example fleet.yml:**
 
 ```yaml
 timeout: 200 # Timeout in seconds for non-blocking commands (default 300)
@@ -136,6 +135,36 @@ pipeline:
           blocking: true
 ```
 
+<details>
+<summary>Workflow Exemple</summary>
+
+```zsh
+         New commit detected
+                 │
+                 ▼
+               +-----+
+               |build|
+               +--+--+
+                  │
+      ┌-----------┴-----------┐
+      ▼                       ▼
+ +-----------+           +-----------+
+ | test_rust |           | echo_test |
+ +-----------+           +-----------+
+      │                       │
+      └-----------┬-----------┘
+                  ▼
+              +--------+
+              | deploy |
+              +--------+
+                  │
+          ┌-------┴---------┐
+          ▼                 ▼
+  +---------------+    +---------+
+  | Notifications |    |  Stats  |
+  +---------------+    +---------+
+
+```
 </details>
 
 **Key Points:**
