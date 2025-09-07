@@ -55,6 +55,24 @@ pub struct Notification {
     pub channels: Vec<ConfChannel>,
 }
 
+fn find_pipe_dependance(ctx: &WatchContext, job_name: &str) -> Option<Cmd> {
+    for (n, j) in &ctx.config.pipeline.jobs {
+        if !j.pipe.is_empty() && n == job_name {
+            println!("debug: job {n} has linked as output for job {}", j.pipe);
+            return ctx
+                .config
+                .pipeline
+                .jobs
+                .get(job_name)
+                .unwrap()
+                .steps
+                .last()
+                .cloned();
+        }
+    }
+    None
+}
+
 impl ProjectConfig {
     pub fn drop_strategy(
         &self,
@@ -71,22 +89,28 @@ impl ProjectConfig {
             .create(true)
             .append(true)
             .open(&log_path)?;
+
         for (n, j) in &self.pipeline.jobs {
-            if *n == job_name {
-                if !j.pipe.is_empty() && last.is_some() {
-                    return Ok(OutpuStrategy::ToPipe {
-                        stdout: stdout_file,
-                        stderr: stderr_file,
-                        target: String::from(&last.unwrap().cmd),
-                    });
-                } else {
-                    break;
-                }
+            if !j.pipe.is_empty() && j.pipe == job_name {
+                println!("debug: pipe link: job {n} is now linked with job {job_name}");
+                return Ok(OutpuStrategy::ToPipeOut {
+                    stdout: stdout_file,
+                    stderr: stderr_file,
+                    target: String::from(&j.steps.last().unwrap().cmd),
+                });
             }
         }
-        return Ok(OutpuStrategy::ToFiles {
+        if let Some(depend) = find_pipe_dependance(ctx, job_name) {
+            return Ok(OutpuStrategy::ToPipeIn {
+                stdout: stdout_file,
+                stderr: stderr_file,
+                target: depend.cmd,
+            });
+        }
+        println!("debug: no piped job: {job_name}: '{:?}'", last);
+        Ok(OutpuStrategy::ToFiles {
             stdout: stdout_file,
             stderr: stderr_file,
-        });
+        })
     }
 }

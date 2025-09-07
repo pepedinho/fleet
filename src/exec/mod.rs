@@ -1,7 +1,8 @@
-use std::{fs::File, process::Stdio};
+use std::{collections::HashMap, fs::File, process::Stdio, sync::Arc};
 
 use anyhow::Result;
-use tokio::process::Command;
+use tempfile::NamedTempFile;
+use tokio::{process::Command, sync::Mutex};
 
 pub mod command;
 pub mod container;
@@ -13,38 +14,92 @@ pub enum OutpuStrategy {
         stdout: File,
         stderr: File,
     },
-    ToPipe {
+    ToPipeOut {
+        target: String,
         stdout: File,
         stderr: File,
+    },
+    ToPipeIn {
         target: String,
+        stdout: File,
+        stderr: File,
     },
 }
 
+pub enum CMDManage {
+    Default,
+    PipeIn,
+    PipeOut,
+}
+#[derive(Debug)]
+pub struct PipeRegistry {
+    pub pipes_register: HashMap<String, NamedTempFile>,
+}
+
 impl OutpuStrategy {
-    fn configure(&self, cmd: &mut Command, current: Vec<std::string::String>) -> Result<()> {
+    async fn configure(
+        &self,
+        cmd: &mut Command,
+        current: Vec<std::string::String>,
+        reg: Arc<Mutex<PipeRegistry>>,
+    ) -> Result<CMDManage> {
         match self {
             OutpuStrategy::ToFiles { stdout, stderr } => {
                 cmd.stdout(Stdio::from(stdout.try_clone()?));
                 cmd.stderr(Stdio::from(stderr.try_clone()?));
+                Ok(CMDManage::Default)
             }
-            OutpuStrategy::ToPipe {
-                stdout: _,
-                stderr: _,
-                target,
-            } if current == shell_words::split(&target)? => {
-                cmd.stdout(Stdio::piped());
-                cmd.stderr(Stdio::piped());
+            OutpuStrategy::ToPipeOut { target, .. } if current == shell_words::split(target)? => {
+                // write in output file
                 println!("debug: pipe: step '{target}' has been piped !");
+                let tmpfile = tempfile::NamedTempFile::new()?;
+                cmd.stdout(Stdio::from(tmpfile.reopen()?));
+                cmd.stderr(Stdio::from(tmpfile.reopen()?));
+                reg.lock()
+                    .await
+                    .pipes_register
+                    .insert(target.into(), tmpfile);
+                println!("debug, pipe added to registry : \n{:#?}", reg.lock().await);
+                Ok(CMDManage::PipeOut)
             }
-            OutpuStrategy::ToPipe {
+            OutpuStrategy::ToPipeOut {
+                target: _,
                 stdout,
                 stderr,
-                target: _,
             } => {
                 cmd.stdout(Stdio::from(stdout.try_clone()?));
                 cmd.stderr(Stdio::from(stderr.try_clone()?));
+                Ok(CMDManage::Default)
+            }
+            OutpuStrategy::ToPipeIn {
+                target,
+                stdout,
+                stderr,
+            } if current == shell_words::split(target)? => {
+                // read in tmp file
+                println!("debug: try to get output as stdin: target: {target}");
+                if let Some(pipe_path) = {
+                    let registry: tokio::sync::MutexGuard<'_, PipeRegistry> = reg.lock().await;
+                    registry
+                        .pipes_register
+                        .get(target)
+                        .map(|tmpfile| tmpfile.path().to_path_buf())
+                } {
+                    println!("debug: cmd '{:?}' reading from pipe file", current);
+                    let file = File::open(pipe_path)?;
+                    cmd.stdin(Stdio::from(file));
+                } else {
+                    cmd.stdin(Stdio::null());
+                }
+                cmd.stdout(Stdio::from(stdout.try_clone()?));
+                cmd.stderr(Stdio::from(stderr.try_clone()?));
+                Ok(CMDManage::PipeIn)
+            }
+            OutpuStrategy::ToPipeIn { stdout, stderr, .. } => {
+                cmd.stdout(Stdio::from(stdout.try_clone()?));
+                cmd.stderr(Stdio::from(stderr.try_clone()?));
+                Ok(CMDManage::Default)
             }
         }
-        Ok(())
     }
 }

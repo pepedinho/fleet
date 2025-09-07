@@ -1,15 +1,16 @@
 #![allow(dead_code)]
-use std::{collections::HashMap, fs::OpenOptions, time::Duration};
+use std::{collections::HashMap, fs::OpenOptions, sync::Arc, time::Duration};
 
 use anyhow::Result;
 use tokio::{
     process::{Child, Command},
+    sync::Mutex,
     time::timeout,
 };
 
 use crate::{
     core::watcher::WatchContext,
-    exec::{OutpuStrategy, metrics::monitor_process},
+    exec::{OutpuStrategy, PipeRegistry, metrics::monitor_process},
     logging::Logger,
 };
 
@@ -26,6 +27,7 @@ pub async fn run_command_with_timeout(
     timeout_secs: u64,
     output: &OutpuStrategy,
     env: Option<HashMap<String, String>>,
+    pipe_registry: Arc<Mutex<PipeRegistry>>,
 ) -> Result<CommandOutput> {
     // Lance le process avec pipes pour stdout et stderr
     let mut cmd = Command::new(program);
@@ -35,14 +37,16 @@ pub async fn run_command_with_timeout(
         .collect();
 
     cmd.args(args).current_dir(current_dir);
-    output.configure(&mut cmd, full)?;
+    output.configure(&mut cmd, full, pipe_registry).await?;
 
     if let Some(vars) = env {
         for (k, v) in vars {
             cmd.env(k, v);
         }
     }
+
     let mut child = cmd.spawn()?;
+
     let (tx, mut rx) = tokio::sync::mpsc::channel(1);
     let child_pid = child.id();
     tokio::spawn(async move {
@@ -113,6 +117,7 @@ pub async fn exec_timeout(
     timeout: u64,
     env: Option<HashMap<String, String>>,
     output_strategy: &OutpuStrategy,
+    pipe_registry: Arc<Mutex<PipeRegistry>>,
 ) -> Result<CommandOutput, anyhow::Error> {
     let program = &parts[0];
     let args = &parts[1..];
@@ -124,6 +129,7 @@ pub async fn exec_timeout(
         timeout,
         output_strategy,
         env,
+        pipe_registry,
     )
     .await
     {
