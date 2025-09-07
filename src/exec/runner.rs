@@ -11,7 +11,7 @@ use crate::{
     config::{Cmd, Job, ProjectConfig, parser::check_dependency_graph},
     core::watcher::WatchContext,
     exec::{
-        OutpuStrategy,
+        OutpuStrategy, PipeRegistry,
         command::{CommandOutput, exec_background, exec_timeout},
         container::contain_cmd,
         metrics::ExecMetrics,
@@ -35,10 +35,19 @@ fn build_dependency_graph(config: &ProjectConfig) -> Result<HashMap<String, JobN
         if job.needs.contains(name) {
             return Err(anyhow::anyhow!("Job: {} cannot depend on itself", name));
         }
+
+        let job_needs = if !job.pipe.is_empty() && !job.needs.contains(&job.pipe) {
+            let mut j = job.needs.clone();
+            j.push(job.pipe.clone());
+            j
+        } else {
+            job.needs.clone()
+        };
+
         let node = JobNode {
             job: Arc::new(job.clone()),
-            depend_on: job.needs.clone(),
-            remaining_dependencies: job.needs.len(),
+            depend_on: job_needs.clone(),
+            remaining_dependencies: job_needs.len(),
             dependents: vec![],
         };
         graph.insert(name.clone(), node);
@@ -64,9 +73,13 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
         ctx.logger.clone(),
     )));
 
+    let pipe_registry = Arc::new(Mutex::new(PipeRegistry {
+        pipes_register: HashMap::new(),
+    }));
+
     check_dependency_graph(&ctx.config)?;
     let graph_map = build_dependency_graph(&ctx.config)?;
-    let graph = Arc::new(Mutex::new(graph_map));
+    let graph: Arc<Mutex<HashMap<String, JobNode>>> = Arc::new(Mutex::new(graph_map));
 
     let ready_queue = Arc::new(Mutex::new(VecDeque::new()));
 
@@ -82,7 +95,7 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
 
     loop {
         let ready_jobs: Vec<String> = {
-            let mut queue = ready_queue.lock().await;
+            let mut queue: tokio::sync::MutexGuard<'_, VecDeque<String>> = ready_queue.lock().await;
             if queue.is_empty() {
                 break;
             }
@@ -97,6 +110,7 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
             let ready_clone = Arc::clone(&ready_queue);
             let ctx_clone = Arc::clone(&ctx);
             let metrics_clone = Arc::clone(&metrics);
+            let pipe_registry_clone = Arc::clone(&pipe_registry);
 
             let (job_arc, dependents) = {
                 let g = graph.lock().await;
@@ -118,7 +132,15 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
                         .config
                         .drop_strategy(&job_name, &ctx_clone, &job_arc.steps.last())?;
                 for step in &job_arc.steps {
-                    match run_step(&ctx_clone, step, &job_arc.env, &output_strategy).await {
+                    match run_step(
+                        &ctx_clone,
+                        step,
+                        &job_arc.env,
+                        &output_strategy,
+                        Arc::clone(&pipe_registry_clone),
+                    )
+                    .await
+                    {
                         Ok(Some(output)) => {
                             let mut m = metrics_clone.lock().await;
                             m.sys_push(&job_name, output.cpu_usage, output.mem_usage_kb);
@@ -228,6 +250,7 @@ async fn run_step(
     step: &Cmd,
     env: &Option<HashMap<String, String>>,
     output_strategy: &OutpuStrategy,
+    pipe_registry: Arc<Mutex<PipeRegistry>>,
 ) -> Result<Option<CommandOutput>> {
     let parts = shell_words::split(&step.cmd)?;
 
@@ -253,6 +276,7 @@ async fn run_step(
                 env.clone(),
                 ctx.config.timeout.unwrap_or(DEFAULT_TIMEOUT),
                 output_strategy,
+                pipe_registry,
             )
             .await?,
         ));
@@ -282,6 +306,7 @@ async fn timeout_process(
     env: Option<HashMap<String, String>>,
     default_timeout: u64,
     output_strategy: &OutpuStrategy,
+    pipe_registry: Arc<Mutex<PipeRegistry>>,
 ) -> Result<CommandOutput, anyhow::Error> {
     match exec_timeout(
         parts.clone(),
@@ -290,6 +315,7 @@ async fn timeout_process(
         default_timeout,
         env,
         output_strategy,
+        pipe_registry,
     )
     .await
     {
