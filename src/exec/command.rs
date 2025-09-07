@@ -7,7 +7,11 @@ use tokio::{
     time::timeout,
 };
 
-use crate::{core::watcher::WatchContext, exec::metrics::monitor_process, logging::Logger};
+use crate::{
+    core::watcher::WatchContext,
+    exec::{OutpuStrategy, metrics::monitor_process},
+    logging::Logger,
+};
 
 pub struct CommandOutput {
     pub status_code: Option<i32>,
@@ -20,21 +24,18 @@ pub async fn run_command_with_timeout(
     args: &[String],
     current_dir: &str,
     timeout_secs: u64,
-    stdout_file: std::fs::File,
-    stderr_file: std::fs::File,
+    output: &OutpuStrategy,
     env: Option<HashMap<String, String>>,
 ) -> Result<CommandOutput> {
-    use std::process::Stdio;
-
     // Lance le process avec pipes pour stdout et stderr
     let mut cmd = Command::new(program);
 
-    let stdout_stdio = Stdio::from(stdout_file);
-    let stderr_stdio = Stdio::from(stderr_file);
-    cmd.args(args)
-        .current_dir(current_dir)
-        .stdout(stdout_stdio)
-        .stderr(stderr_stdio);
+    let full = std::iter::once(program.to_string())
+        .chain(args.iter().cloned())
+        .collect();
+
+    cmd.args(args).current_dir(current_dir);
+    output.configure(&mut cmd, full)?;
 
     if let Some(vars) = env {
         for (k, v) in vars {
@@ -111,27 +112,17 @@ pub async fn exec_timeout(
     logger: &Logger,
     timeout: u64,
     env: Option<HashMap<String, String>>,
+    output_strategy: &OutpuStrategy,
 ) -> Result<CommandOutput, anyhow::Error> {
     let program = &parts[0];
     let args = &parts[1..];
 
-    let log_path = ctx.log_path();
-
-    let stdout_file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(&log_path)?;
-    let stderr_file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(&log_path)?;
     match run_command_with_timeout(
         program,
         args,
         &ctx.project_dir,
         timeout,
-        stdout_file,
-        stderr_file,
+        output_strategy,
         env,
     )
     .await

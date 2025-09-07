@@ -11,6 +11,7 @@ use crate::{
     config::{Cmd, Job, ProjectConfig, parser::check_dependency_graph},
     core::watcher::WatchContext,
     exec::{
+        OutpuStrategy,
         command::{CommandOutput, exec_background, exec_timeout},
         container::contain_cmd,
         metrics::ExecMetrics,
@@ -111,8 +112,13 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
                 // exec all job step
                 println!("logger job start");
                 ctx_clone.logger.job_start(&job_name).await?;
+
+                let output_strategy =
+                    ctx_clone
+                        .config
+                        .drop_strategy(&job_name, &ctx_clone, &job_arc.steps.last())?;
                 for step in &job_arc.steps {
-                    match run_step(&ctx_clone, step, &job_arc.env).await {
+                    match run_step(&ctx_clone, step, &job_arc.env, &output_strategy).await {
                         Ok(Some(output)) => {
                             let mut m = metrics_clone.lock().await;
                             m.sys_push(&job_name, output.cpu_usage, output.mem_usage_kb);
@@ -221,6 +227,7 @@ async fn run_step(
     ctx: &WatchContext,
     step: &Cmd,
     env: &Option<HashMap<String, String>>,
+    output_strategy: &OutpuStrategy,
 ) -> Result<Option<CommandOutput>> {
     let parts = shell_words::split(&step.cmd)?;
 
@@ -245,6 +252,7 @@ async fn run_step(
                 &ctx.logger,
                 env.clone(),
                 ctx.config.timeout.unwrap_or(DEFAULT_TIMEOUT),
+                output_strategy,
             )
             .await?,
         ));
@@ -273,8 +281,18 @@ async fn timeout_process(
     logger: &Logger,
     env: Option<HashMap<String, String>>,
     default_timeout: u64,
+    output_strategy: &OutpuStrategy,
 ) -> Result<CommandOutput, anyhow::Error> {
-    match exec_timeout(parts.clone(), ctx, logger, default_timeout, env).await {
+    match exec_timeout(
+        parts.clone(),
+        ctx,
+        logger,
+        default_timeout,
+        env,
+        output_strategy,
+    )
+    .await
+    {
         Ok(o) => Ok(o),
         Err(e) => Err(e),
     }
