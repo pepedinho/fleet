@@ -107,7 +107,7 @@ impl ProjectConfig {
                 target: depend.cmd,
             });
         }
-        println!("debug: no piped job: {job_name}: '{:?}'", last);
+        println!("debug: no piped job: {job_name}: '{last:?}'");
         Ok(OutpuStrategy::ToFiles {
             stdout: stdout_file,
             stderr: stderr_file,

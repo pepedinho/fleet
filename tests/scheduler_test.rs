@@ -41,18 +41,17 @@ async fn build_test_ctx(id: &str, jobs: HashMap<String, Job>) -> anyhow::Result<
 fn assert_in_log_order(log: &str, a: &str, b: &str) {
     let idx_a = log
         .find(a)
-        .unwrap_or_else(|| panic!("{} not found in log", a));
+        .unwrap_or_else(|| panic!("{a} not found in log"));
     let idx_b = log
         .find(b)
-        .unwrap_or_else(|| panic!("{} not found in log", b));
-    assert!(idx_a < idx_b, "{} should appear before {} in logs", a, b);
+        .unwrap_or_else(|| panic!("{b} not found in log"));
+    assert!(idx_a < idx_b, "{a} should appear before {b} in logs");
 }
 
 fn assert_in_log(log: &str, job: &str) {
     assert!(
         log.contains(job),
-        "Expected to find {} in logs, but it wasn't there",
-        job
+        "Expected to find {job} in logs, but it wasn't there"
     );
 }
 

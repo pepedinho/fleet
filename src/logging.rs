@@ -75,7 +75,7 @@ impl Logger {
 
             let chunk = String::from_utf8_lossy(&buffer[..read_size]);
 
-            let combined = format!("{}{}", chunk, carry);
+            let combined = format!("{chunk}{carry}");
             let mut parts: Vec<&str> = combined.split('\n').collect();
 
             carry = parts.remove(0).to_string();

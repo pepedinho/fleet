@@ -161,17 +161,16 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
                                 discord_send_failure(
                                     &ctx_clone,
                                     &format!(
-                                        "**Job** `{}` **failed**
-                                        {}
-                                        **Error:** `{}`",
-                                        job_name, first_line, second_line,
+                                        "**Job** `{job_name}` **failed**
+                                        {first_line}
+                                        **Error:** `{second_line}`",
                                     ),
                                 )
                                 .await?;
                             }
                             ctx_clone
                                 .logger
-                                .error(&format!("Job {} failed", job_name))
+                                .error(&format!("Job {job_name} failed"))
                                 .await?;
                             {
                                 let mut m = metrics_clone.lock().await;
@@ -189,7 +188,7 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
 
                 ctx_clone
                     .logger
-                    .info(&format!("Job {} succeeded", job_name))
+                    .info(&format!("Job {job_name} succeeded"))
                     .await?;
 
                 // update dependents
