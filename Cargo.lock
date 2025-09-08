@@ -497,6 +497,7 @@ dependencies = [
  "serde_yaml",
  "shell-words",
  "sysinfo",
+ "tempfile",
  "tokio",
 ]
 

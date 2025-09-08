@@ -26,9 +26,9 @@ pipeline:
         - cmd: cargo test --test cli_test -- --test-threads=1
 
     echo_test:
-      needs: [build]
+      pipe: test_rust
       steps:
-        - cmd: echo test 1
+        - cmd: grep ok
 
     sleep_test:
       steps:

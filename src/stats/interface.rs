@@ -80,7 +80,7 @@ pub fn render_project_details(app: &App) -> Option<Paragraph<'_>> {
         let logs = proj
             .last_logs
             .iter()
-            .map(|l| format!("  {}", l))
+            .map(|l| format!("  {l}"))
             .collect::<Vec<_>>()
             .join("\n");
 
@@ -171,7 +171,7 @@ pub async fn load_all_stats() -> Result<Vec<ProjectStats>> {
                     projects.entry(pm.project_id.clone()).or_default().push(pm);
                 }
                 Err(e) => {
-                    eprintln!("JSON Error in {:?}: {e}", path);
+                    eprintln!("JSON Error in {path:?}: {e}");
                 }
             }
         }
