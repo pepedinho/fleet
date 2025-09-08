@@ -9,6 +9,7 @@ pub mod container;
 pub mod metrics;
 pub mod runner;
 
+#[allow(clippy::enum_variant_names)]
 pub enum OutpuStrategy {
     ToFiles {
         stdout: File,
@@ -85,7 +86,7 @@ impl OutpuStrategy {
                         .get(target)
                         .map(|tmpfile| tmpfile.path().to_path_buf())
                 } {
-                    println!("debug: cmd '{:?}' reading from pipe file", current);
+                    println!("debug: cmd '{current:?}' reading from pipe file");
                     let file = File::open(pipe_path)?;
                     cmd.stdin(Stdio::from(file));
                 } else {
