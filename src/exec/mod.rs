@@ -16,6 +16,7 @@ pub enum OutpuStrategy {
         stderr: File,
     },
     ToPipeOut {
+        cmd: String,
         target: String,
         stdout: File,
         stderr: File,
@@ -50,9 +51,11 @@ impl OutpuStrategy {
                 cmd.stderr(Stdio::from(stderr.try_clone()?));
                 Ok(CMDManage::Default)
             }
-            OutpuStrategy::ToPipeOut { target, .. } if current == shell_words::split(target)? => {
+            OutpuStrategy::ToPipeOut { cmd: c, target, .. }
+                if current == shell_words::split(c)? =>
+            {
                 // write in output file
-                println!("debug: pipe: step '{target}' has been piped !");
+                println!("debug: pipe: step '{c}' has been piped !");
                 let tmpfile = tempfile::NamedTempFile::new()?;
                 cmd.stdout(Stdio::from(tmpfile.reopen()?));
                 cmd.stderr(Stdio::from(tmpfile.reopen()?));
@@ -64,6 +67,7 @@ impl OutpuStrategy {
                 Ok(CMDManage::PipeOut)
             }
             OutpuStrategy::ToPipeOut {
+                cmd: _,
                 target: _,
                 stdout,
                 stderr,

@@ -59,15 +59,9 @@ fn find_pipe_dependance(ctx: &WatchContext, job_name: &str) -> Option<Cmd> {
     for (n, j) in &ctx.config.pipeline.jobs {
         if !j.pipe.is_empty() && n == job_name {
             println!("debug: job {n} has linked as output for job {}", j.pipe);
-            return ctx
-                .config
-                .pipeline
-                .jobs
-                .get(job_name)
-                .unwrap()
-                .steps
-                .last()
-                .cloned();
+            let target = j.steps.last().cloned();
+            println!("[2]'{target:?}' has design as target");
+            return target;
         }
     }
     None
@@ -93,14 +87,27 @@ impl ProjectConfig {
         for (n, j) in &self.pipeline.jobs {
             if !j.pipe.is_empty() && j.pipe == job_name {
                 println!("debug: pipe link: job {n} is now linked with job {job_name}");
+                let cmd = ctx
+                    .config
+                    .pipeline
+                    .jobs
+                    .get(job_name)
+                    .unwrap()
+                    .steps
+                    .last()
+                    .unwrap();
+                let target = String::from(&j.steps.last().unwrap().cmd);
+                println!("[1]'{target}' has design as target");
                 return Ok(OutpuStrategy::ToPipeOut {
+                    cmd: cmd.cmd.clone(),
                     stdout: stdout_file,
                     stderr: stderr_file,
-                    target: String::from(&j.steps.last().unwrap().cmd),
+                    target: target,
                 });
             }
         }
         if let Some(depend) = find_pipe_dependance(ctx, job_name) {
+            // job who depend another
             return Ok(OutpuStrategy::ToPipeIn {
                 stdout: stdout_file,
                 stderr: stderr_file,
