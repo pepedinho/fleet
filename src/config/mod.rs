@@ -102,7 +102,7 @@ impl ProjectConfig {
                     cmd: cmd.cmd.clone(),
                     stdout: stdout_file,
                     stderr: stderr_file,
-                    target: target,
+                    target,
                 });
             }
         }
