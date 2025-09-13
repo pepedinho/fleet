@@ -55,7 +55,6 @@ impl OutpuStrategy {
                 if current == shell_words::split(c)? =>
             {
                 // write in output file
-                println!("debug: pipe: step '{c}' has been piped !");
                 let tmpfile = tempfile::NamedTempFile::new()?;
                 cmd.stdout(Stdio::from(tmpfile.reopen()?));
                 cmd.stderr(Stdio::from(tmpfile.reopen()?));
@@ -63,7 +62,6 @@ impl OutpuStrategy {
                     .await
                     .pipes_register
                     .insert(target.into(), tmpfile);
-                println!("debug, pipe added to registry : \n{:#?}", reg.lock().await);
                 Ok(CMDManage::PipeOut)
             }
             OutpuStrategy::ToPipeOut {
@@ -82,7 +80,6 @@ impl OutpuStrategy {
                 stderr,
             } if current == shell_words::split(target)? => {
                 // read in tmp file
-                println!("debug: try to get output as stdin: target: {target}");
                 if let Some(pipe_path) = {
                     let registry: tokio::sync::MutexGuard<'_, PipeRegistry> = reg.lock().await;
                     registry
@@ -90,7 +87,6 @@ impl OutpuStrategy {
                         .get(target)
                         .map(|tmpfile| tmpfile.path().to_path_buf())
                 } {
-                    println!("debug: cmd '{current:?}' reading from pipe file");
                     let file = File::open(pipe_path)?;
                     cmd.stdin(Stdio::from(file));
                 } else {

@@ -53,14 +53,14 @@ pub struct ConfChannel {
 pub struct Notification {
     pub on: Vec<String>,
     pub channels: Vec<ConfChannel>,
+    #[serde(default)]
+    pub thumbnail: Option<String>,
 }
 
 fn find_pipe_dependance(ctx: &WatchContext, job_name: &str) -> Option<Cmd> {
     for (n, j) in &ctx.config.pipeline.jobs {
         if !j.pipe.is_empty() && n == job_name {
-            println!("debug: job {n} has linked as output for job {}", j.pipe);
             let target = j.steps.last().cloned();
-            println!("[2]'{target:?}' has design as target");
             return target;
         }
     }
@@ -68,12 +68,7 @@ fn find_pipe_dependance(ctx: &WatchContext, job_name: &str) -> Option<Cmd> {
 }
 
 impl ProjectConfig {
-    pub fn drop_strategy(
-        &self,
-        job_name: &str,
-        ctx: &WatchContext,
-        last: &Option<&Cmd>,
-    ) -> Result<OutpuStrategy> {
+    pub fn drop_strategy(&self, job_name: &str, ctx: &WatchContext) -> Result<OutpuStrategy> {
         let log_path = ctx.log_path();
         let stdout_file = OpenOptions::new()
             .create(true)
@@ -84,9 +79,8 @@ impl ProjectConfig {
             .append(true)
             .open(&log_path)?;
 
-        for (n, j) in &self.pipeline.jobs {
+        for j in self.pipeline.jobs.values() {
             if !j.pipe.is_empty() && j.pipe == job_name {
-                println!("debug: pipe link: job {n} is now linked with job {job_name}");
                 let cmd = ctx
                     .config
                     .pipeline
@@ -114,7 +108,6 @@ impl ProjectConfig {
                 target: depend.cmd,
             });
         }
-        println!("debug: no piped job: {job_name}: '{last:?}'");
         Ok(OutpuStrategy::ToFiles {
             stdout: stdout_file,
             stderr: stderr_file,
