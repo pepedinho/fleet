@@ -127,10 +127,7 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
                 println!("logger job start");
                 ctx_clone.logger.job_start(&job_name).await?;
 
-                let output_strategy =
-                    ctx_clone
-                        .config
-                        .drop_strategy(&job_name, &ctx_clone, &job_arc.steps.last())?;
+                let output_strategy = ctx_clone.config.drop_strategy(&job_name, &ctx_clone)?;
                 for step in &job_arc.steps {
                     match run_step(
                         &ctx_clone,

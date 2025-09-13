@@ -5,13 +5,15 @@ use serde_json::json;
 use crate::{
     core::watcher::WatchContext,
     exec::metrics::ExecMetrics,
-    notifications::{DiscordEmbed, DiscordField, DiscordFooter},
+    notifications::{DiscordEmbed, DiscordField, DiscordFooter, DiscordImage},
 };
 
 pub async fn discord_sender(url: &str, embed: &DiscordEmbed) -> Result<()> {
     let payload = json!({
         "embeds": [embed]
     });
+
+    println!("debug: embed: {:#?}", embed);
 
     let client = Client::new();
     let resp = client.post(url).json(&payload).send().await?;
@@ -32,6 +34,7 @@ pub async fn discord_send_succes(ctx: &WatchContext, m: &ExecMetrics) -> Result<
         title: "✅Pipeline finish".into(),
         description: format!("Pipeline **{}** executed successfully", ctx.repo.name),
         color: 0x2ECC71,
+        thumbnail: DiscordImage::load(ctx.config.pipeline.notifications.thumbnail.clone()),
         fields: vec![
             DiscordField {
                 name: "Service name".into(),
@@ -79,6 +82,7 @@ pub async fn discord_send_failure(ctx: &WatchContext, msg: &str) -> Result<()> {
         title: "❌ Pipeline failed".into(),
         description: String::from(msg),
         color: 0xE74C3C,
+        thumbnail: DiscordImage::load(ctx.config.pipeline.notifications.thumbnail.clone()),
         fields: vec![],
         footer: None,
         timestamp: Some(chrono::Utc::now()),
