@@ -3,7 +3,7 @@ use serde::Serialize;
 
 pub mod sender;
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct DiscordField {
     pub name: String,
     pub value: String,
@@ -11,12 +11,27 @@ pub struct DiscordField {
     pub inline: bool,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
+pub struct DiscordImage {
+    pub url: String,
+}
+
+impl DiscordImage {
+    pub fn load(img: Option<String>) -> Option<Self> {
+        if let Some(i) = img {
+            Some(DiscordImage { url: i })
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(Serialize, Debug)]
 pub struct DiscordFooter {
     pub text: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct DiscordEmbed {
     pub title: String,
     pub description: String,
@@ -27,4 +42,6 @@ pub struct DiscordEmbed {
     pub footer: Option<DiscordFooter>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub timestamp: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub thumbnail: Option<DiscordImage>,
 }
