@@ -18,11 +18,7 @@ pub struct DiscordImage {
 
 impl DiscordImage {
     pub fn load(img: Option<String>) -> Option<Self> {
-        if let Some(i) = img {
-            Some(DiscordImage { url: i })
-        } else {
-            None
-        }
+        img.map(|i| DiscordImage { url: i })
     }
 }
 

@@ -79,7 +79,7 @@ impl ProjectConfig {
             .append(true)
             .open(&log_path)?;
 
-        for (_n, j) in &self.pipeline.jobs {
+        for j in self.pipeline.jobs.values() {
             if !j.pipe.is_empty() && j.pipe == job_name {
                 let cmd = ctx
                     .config
