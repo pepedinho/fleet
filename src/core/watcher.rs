@@ -8,7 +8,7 @@ use tokio::fs;
 
 #[allow(unused_imports)]
 use crate::git::{remote::get_remote_branch_hash, repo::Repo};
-use crate::{config::ProjectConfig, logging::Logger};
+use crate::{config::ProjectConfig, log::logger::Logger};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WatchContext {

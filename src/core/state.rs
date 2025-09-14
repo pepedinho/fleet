@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use std::{collections::HashMap, path::PathBuf};
 
-use crate::{core::watcher::WatchContext, logging::Logger};
+use crate::{core::watcher::WatchContext, log::logger::Logger};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use tokio::{fs, sync::RwLock};

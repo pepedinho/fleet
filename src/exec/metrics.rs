@@ -11,7 +11,7 @@ use tokio::{
     time::sleep,
 };
 
-use crate::logging::Logger;
+use crate::log::logger::Logger;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum JobStatus {

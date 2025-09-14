@@ -13,7 +13,7 @@ mod core;
 mod exec;
 mod git;
 mod ipc;
-mod logging;
+mod log;
 mod notifications;
 mod stats;
 

@@ -5,6 +5,6 @@ pub mod core;
 pub mod exec;
 pub mod git;
 pub mod ipc;
-pub mod logging;
+pub mod log;
 pub mod notifications;
 pub mod stats;

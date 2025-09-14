@@ -21,7 +21,7 @@ use tokio::{
 
 use crate::{
     exec::metrics::{ExecMetrics, JobMetrics},
-    logging::Logger,
+    log::logger::Logger,
 };
 
 #[derive(Debug, Deserialize)]
