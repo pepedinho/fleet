@@ -47,6 +47,15 @@ impl Logger {
         log_dir.join(id.to_string() + ".log")
     }
 
+    pub fn rm_logs_by_id(id: &str) -> anyhow::Result<()> {
+        let path = Logger::path_by_id(id);
+
+        if path.exists() {
+            std::fs::remove_file(path)?;
+        }
+        Ok(())
+    }
+
     pub async fn fetchn(id: &str, n: usize) -> anyhow::Result<Vec<String>> {
         let path = Logger::path_by_id(id);
 
