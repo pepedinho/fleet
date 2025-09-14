@@ -14,28 +14,19 @@ pipeline:
     channels:
       - service: discord
         url: https://discord.com/api/webhooks/1411403673028001989/WH1KIMmgxSNEF6kV_9-TQS1LadHASBLDJ5evPgMIo3Ko8NX40hcMom_InEo9YsNrRDmu
+  
   jobs:
-    build:
-      steps:
-        - cmd: cargo build
-
     test_rust:
-      needs: [build]
       env:
         RUST_LOG: debug
       steps:
         - cmd: cargo test --test cli_test -- --test-threads=1
-
-    echo_test:
-      pipe: test_rust
-      steps:
-        - cmd: grep ok
 
     sleep_test:
       steps:
         - cmd: sleep 5
         
     deploy:
-      needs: [test_rust, echo_test]
+      needs: [test_rust]
       steps:
         - cmd: echo je suis arriver a la fin

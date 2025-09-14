@@ -87,6 +87,7 @@ fleet watch
 | `fleet up <id>`         | Resume watching a stopped project                                                      |
 | `fleet rm <id>`         | Remove a monitored project                                                             |
 | `fleet stats`           | Show interactive statistics of all watched projects                                    |
+| `fleet run <id>`        | Run a pipeline on demand                                                               |
 
 ---
 
