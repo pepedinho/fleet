@@ -3,8 +3,8 @@ use std::path::Path;
 use core_lib::cli::builders::build_watch_request;
 use core_lib::cli::{self, Cli};
 use core_lib::config::parser::load_config;
-use core_lib::git::repo::Repo;
 use core_lib::daemon::server::DaemonRequest;
+use core_lib::git::repo::Repo;
 use pretty_assertions::assert_eq;
 
 #[tokio::test]

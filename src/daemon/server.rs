@@ -9,10 +9,10 @@ use crate::{
         state::{AppState, add_watch, get_id_by_name, get_name_by_id, remove_watch_by_id},
         watcher::{WatchContext, WatchContextBuilder},
     },
+    daemon::utiles::extract_repo_path,
     exec::metrics::ExecMetrics,
     exec::runner::run_pipeline,
     git::repo::Repo,
-    daemon::utiles::extract_repo_path,
     log::logger::Logger,
 };
 use anyhow::Result;
