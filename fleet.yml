@@ -14,28 +14,19 @@ pipeline:
     channels:
       - service: discord
         url: https://discord.com/api/webhooks/REDACTED_WEBHOOK_ID/REDACTED_WEBHOOK_TOKEN
+  
   jobs:
-    build:
-      steps:
-        - cmd: cargo build
-
     test_rust:
-      needs: [build]
       env:
         RUST_LOG: debug
       steps:
         - cmd: cargo test --test cli_test -- --test-threads=1
-
-    echo_test:
-      pipe: test_rust
-      steps:
-        - cmd: grep ok
 
     sleep_test:
       steps:
         - cmd: sleep 5
         
     deploy:
-      needs: [test_rust, echo_test]
+      needs: [test_rust]
       steps:
         - cmd: echo je suis arriver a la fin

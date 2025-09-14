@@ -77,7 +77,7 @@ async fn update_commit(state: &Arc<AppState>, id: &str, new_commit: String) {
     }
 }
 
-async fn get_watch_ctx(state: &Arc<AppState>, id: &str) -> Option<WatchContext> {
+pub async fn get_watch_ctx(state: &Arc<AppState>, id: &str) -> Option<WatchContext> {
     let watches_read: tokio::sync::RwLockReadGuard<
         '_,
         std::collections::HashMap<String, WatchContext>,

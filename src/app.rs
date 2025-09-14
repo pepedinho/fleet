@@ -32,6 +32,7 @@ pub async fn build_watch_request(cli: &Cli) -> Result<DaemonRequest> {
             display_stats_interface().await?;
             Ok(DaemonRequest::None)
         }
+        Commands::Run { id } => Ok(DaemonRequest::RunPipeline { id: id.clone() }),
     }
 }
 
