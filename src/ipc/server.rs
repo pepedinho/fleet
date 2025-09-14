@@ -13,7 +13,7 @@ use crate::{
     exec::runner::run_pipeline,
     git::repo::Repo,
     ipc::utiles::extract_repo_path,
-    logging::Logger,
+    log::logger::Logger,
 };
 use anyhow::Result;
 use serde::{Deserialize, Serialize};

@@ -3,7 +3,7 @@ use std::{collections::HashMap, env::temp_dir, sync::Arc};
 use core_lib::{
     core::{self, state::AppState},
     ipc::server::{DaemonResponse, handle_list_watches, handle_rm_watch},
-    logging::Logger,
+    log::logger::Logger,
 };
 use pretty_assertions::assert_eq;
 use tokio::{fs, sync::RwLock};
