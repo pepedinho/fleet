@@ -96,8 +96,6 @@ impl WatchContext {
         log_dir.join(id.to_string() + ".log")
     }
 
-    
-
     pub async fn init_logs() -> Result<()> {
         let home = home_dir().ok_or_else(|| anyhow::anyhow!("Failed to find HOME directory"))?;
 
