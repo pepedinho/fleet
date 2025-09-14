@@ -5,9 +5,11 @@ use crate::{
     config::ProjectConfig,
     core::{
         id::short_id,
+        manager::get_watch_ctx,
         state::{AppState, add_watch, get_id_by_name, get_name_by_id, remove_watch_by_id},
         watcher::{WatchContext, WatchContextBuilder},
     },
+    exec::runner::run_pipeline,
     exec::metrics::ExecMetrics,
     git::repo::Repo,
     ipc::utiles::extract_repo_path,
@@ -31,6 +33,11 @@ pub enum DaemonRequest {
         // use Box (clippy)
         repo: Box<Repo>,
         config: Box<ProjectConfig>,
+    },
+
+    #[serde(rename = "run_pipeline")]
+    RunPipeline {
+        id: String,
     },
 
     #[serde(rename = "stop_watch")]
@@ -62,7 +69,7 @@ pub enum DaemonRequest {
     None,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct WatchInfo {
     pub branch: String,
     pub project_dir: String,
@@ -73,12 +80,13 @@ pub struct WatchInfo {
     pub paused: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum DaemonResponse {
     Success(String),
     Error(String),
     ListWatches(Vec<WatchInfo>),
     LogWatch(String, bool),
+    Ignore,
     None,
 }
 
@@ -131,10 +139,39 @@ pub async fn handle_request(
 
         DaemonRequest::LogsWatches { id, f } => handle_logs_watches(id, f).await,
 
+        DaemonRequest::RunPipeline { id } => {
+            handle_run_pipeline(&id, state, stream).await?;
+            DaemonResponse::Ignore
+        }
         DaemonRequest::None => DaemonResponse::None,
     };
 
-    send_response(stream, response).await?;
+    if response != DaemonResponse::Ignore {
+        send_response(stream, response).await?;
+    }
+    Ok(())
+}
+
+async fn handle_run_pipeline(
+    id: &str,
+    state: Arc<AppState>,
+    stream: &mut WriteHalf<UnixStream>,
+) -> anyhow::Result<()> {
+    if let Some(ctx) = get_watch_ctx(&state, id).await {
+        send_response(
+            stream,
+            DaemonResponse::Success(format!("Pipeline {id} has been runed")),
+        )
+        .await?;
+        match run_pipeline(Arc::new(ctx)).await {
+            Ok(_) => {
+                println!("[{id}] ✅ Update succeeded");
+            }
+            Err(e) => {
+                eprintln!("[{id}] ❌ Update failed => {e}");
+            }
+        }
+    }
     Ok(())
 }
 
