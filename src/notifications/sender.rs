@@ -13,8 +13,6 @@ pub async fn discord_sender(url: &str, embed: &DiscordEmbed) -> Result<()> {
         "embeds": [embed]
     });
 
-    println!("debug: embed: {:#?}", embed);
-
     let client = Client::new();
     let resp = client.post(url).json(&payload).send().await?;
 
