@@ -12,8 +12,8 @@ use crate::{
         state::AppState,
         watcher::{WatchContext, watch_once},
     },
-    exec::runner::run_pipeline,
     daemon::server::{DaemonRequest, handle_request},
+    exec::runner::run_pipeline,
 };
 
 pub async fn supervisor_loop(state: Arc<AppState>, interval_secs: u64) {

@@ -5,8 +5,8 @@ use anyhow::{Ok, Result};
 use crate::{
     cli::{Cli, Commands, client::send_watch_request},
     config::parser::load_config,
-    git::repo::Repo,
     daemon::server::DaemonRequest,
+    git::repo::Repo,
     stats::interface::display_stats_interface,
 };
 
