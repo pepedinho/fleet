@@ -8,6 +8,7 @@ use crate::{
         state::{AppState, add_watch, get_id_by_name, get_name_by_id, remove_watch_by_id},
         watcher::{WatchContext, WatchContextBuilder},
     },
+    exec::metrics::ExecMetrics,
     git::repo::Repo,
     ipc::utiles::extract_repo_path,
     logging::Logger,
@@ -229,6 +230,7 @@ pub async fn handle_rm_watch(state: Arc<AppState>, id: String) -> DaemonResponse
     match async {
         let mut guard = state.watches.write().await;
         if let Some(w) = guard.remove(&id) {
+            ExecMetrics::rm_metrics_by_id(&id)?;
             remove_watch_by_id(&id).await?;
             Ok::<_, anyhow::Error>(format!("Project: {} was deleted", w.repo.name))
         } else {
