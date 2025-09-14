@@ -205,6 +205,17 @@ impl ExecMetrics {
         Ok(dir)
     }
 
+    pub fn get_metrics_path_by_id(id: &str) -> anyhow::Result<PathBuf> {
+        let home = home_dir().ok_or_else(|| anyhow::anyhow!("Failed to find HOME directory"))?;
+        let dir = home.join(".fleet").join("metrics").join(id);
+        Ok(dir)
+    }
+
+    pub fn rm_metrics_by_id(id: &str) -> anyhow::Result<()> {
+        std::fs::remove_file(ExecMetrics::get_metrics_path_by_id(id)?)?;
+        Ok(())
+    }
+
     pub async fn open_metrics_file(project_id: &str) -> anyhow::Result<tokio::fs::File> {
         let dir = Self::ensure_metrics_dir().await?;
         let path = dir.join(format!("{project_id}.ndjson"));
