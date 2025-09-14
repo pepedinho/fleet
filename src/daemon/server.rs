@@ -12,7 +12,7 @@ use crate::{
     exec::metrics::ExecMetrics,
     exec::runner::run_pipeline,
     git::repo::Repo,
-    ipc::utiles::extract_repo_path,
+    daemon::utiles::extract_repo_path,
     log::logger::Logger,
 };
 use anyhow::Result;

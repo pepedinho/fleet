@@ -2,7 +2,7 @@ use std::{collections::HashMap, env::temp_dir, sync::Arc};
 
 use core_lib::{
     core::{self, state::AppState},
-    ipc::server::{DaemonResponse, handle_list_watches, handle_rm_watch},
+    daemon::server::{DaemonResponse, handle_list_watches, handle_rm_watch},
     log::logger::Logger,
 };
 use pretty_assertions::assert_eq;
