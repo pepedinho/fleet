@@ -52,7 +52,7 @@ fn handle_daemon_response(response: DaemonResponse) -> Result<()> {
         DaemonResponse::LogWatch(p, f) => {
             display_logs(&p, f)?;
         }
-        DaemonResponse::None => {}
+        DaemonResponse::None | DaemonResponse::Ignore => {}
     }
     Ok(())
 }
