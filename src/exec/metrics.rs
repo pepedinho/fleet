@@ -207,7 +207,10 @@ impl ExecMetrics {
 
     pub fn get_metrics_path_by_id(id: &str) -> anyhow::Result<PathBuf> {
         let home = home_dir().ok_or_else(|| anyhow::anyhow!("Failed to find HOME directory"))?;
-        let dir = home.join(".fleet").join("metrics").join(id);
+        let dir = home
+            .join(".fleet")
+            .join("metrics")
+            .join(id.to_owned() + ".ndjson");
         Ok(dir)
     }
 

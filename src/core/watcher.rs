@@ -96,14 +96,7 @@ impl WatchContext {
         log_dir.join(id.to_string() + ".log")
     }
 
-    pub fn clear(&self) -> anyhow::Result<()> {
-        let path = self.log_path();
-
-        if path.exists() {
-            std::fs::remove_file(path)?;
-        }
-        Ok(())
-    }
+    
 
     pub async fn init_logs() -> Result<()> {
         let home = home_dir().ok_or_else(|| anyhow::anyhow!("Failed to find HOME directory"))?;

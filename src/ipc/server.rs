@@ -267,8 +267,9 @@ pub async fn handle_rm_watch(state: Arc<AppState>, id: String) -> DaemonResponse
     match async {
         let mut guard = state.watches.write().await;
         if let Some(w) = guard.remove(&id) {
-            ExecMetrics::rm_metrics_by_id(&id)?;
-            remove_watch_by_id(&id).await?;
+            ExecMetrics::rm_metrics_by_id(&id)?; // remove metrics file
+            Logger::rm_logs_by_id(&id)?; // remove log file 
+            remove_watch_by_id(&id).await?; // remove this watch in watches.json
             Ok::<_, anyhow::Error>(format!("Project: {} was deleted", w.repo.name))
         } else {
             Err(anyhow::anyhow!("⚠ ID not found: {}", id))
