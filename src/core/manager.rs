@@ -13,7 +13,7 @@ use crate::{
         watcher::{WatchContext, watch_once},
     },
     exec::runner::run_pipeline,
-    ipc::server::{DaemonRequest, handle_request},
+    daemon::server::{DaemonRequest, handle_request},
 };
 
 pub async fn supervisor_loop(state: Arc<AppState>, interval_secs: u64) {

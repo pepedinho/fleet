@@ -1,10 +1,9 @@
-pub mod app;
 pub mod cli;
 pub mod config;
 pub mod core;
+pub mod daemon;
 pub mod exec;
 pub mod git;
-pub mod ipc;
 pub mod log;
 pub mod notifications;
 pub mod stats;

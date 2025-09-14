@@ -1,3 +1,8 @@
+#![allow(dead_code)]
+
+pub mod builders;
+pub mod client;
+
 use clap::{Parser, Subcommand};
 
 #[derive(Parser, Debug, Clone)]

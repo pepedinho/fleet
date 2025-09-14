@@ -6,13 +6,12 @@ use crate::core::{
     watcher::WatchContext,
 };
 
-mod app;
 mod cli;
 mod config;
 mod core;
+mod daemon;
 mod exec;
 mod git;
-mod ipc;
 mod log;
 mod notifications;
 mod stats;
