@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["DaemonRequest","DaemonResponse"],"fn":["get_log_file","handle_list_watches","handle_request","handle_rm_watch","handle_up_watch"],"struct":["WatchInfo"]};

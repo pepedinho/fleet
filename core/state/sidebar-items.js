@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["get_id_by_name","get_name_by_id"],"struct":["AppState","WatchRegistry"]};

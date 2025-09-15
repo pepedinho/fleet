@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["sender"],"struct":["DiscordEmbed","DiscordField","DiscordFooter","DiscordImage"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["display_stats_interface","load_all_stats","render_project_details","render_table","ui"],"struct":["App","ProjectMetrics","ProjectStats"]};
