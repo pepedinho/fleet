@@ -2,24 +2,23 @@ use std::sync::Arc;
 
 use crate::core::{
     manager::{start_socket_listener, supervisor_loop},
-    state::{AppState, init_watch_file},
+    state::AppState,
     watcher::WatchContext,
 };
 
-mod app;
 mod cli;
 mod config;
 mod core;
+mod daemon;
 mod exec;
 mod git;
-mod ipc;
-mod logging;
+mod log;
 mod notifications;
 mod stats;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    init_watch_file().await?;
+    AppState::init_watch_file().await?;
     let state = Arc::new(AppState::load_from_disk().await?);
     WatchContext::init_logs().await?;
 

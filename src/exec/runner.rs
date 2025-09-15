@@ -16,7 +16,7 @@ use crate::{
         container::contain_cmd,
         metrics::ExecMetrics,
     },
-    logging::Logger,
+    log::logger::Logger,
     notifications::sender::{discord_send_failure, discord_send_succes},
 };
 

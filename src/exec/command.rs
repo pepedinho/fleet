@@ -11,7 +11,7 @@ use tokio::{
 use crate::{
     core::watcher::WatchContext,
     exec::{OutpuStrategy, PipeRegistry, metrics::monitor_process},
-    logging::Logger,
+    log::logger::Logger,
 };
 
 pub struct CommandOutput {

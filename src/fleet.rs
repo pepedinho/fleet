@@ -1,15 +1,14 @@
 use clap::Parser;
 
-use crate::{app::handle_watch, cli::Cli};
+use crate::cli::{Cli, builders::handle_watch};
 
-mod app;
 mod cli;
 mod config;
 mod core;
+mod daemon;
 mod exec;
 mod git;
-mod ipc;
-mod logging;
+mod log;
 mod notifications;
 mod stats;
 

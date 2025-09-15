@@ -1,13 +1,12 @@
-#![allow(dead_code)]
 use std::path::Path;
 
 use anyhow::{Ok, Result};
 
 use crate::{
-    cli::{Cli, Commands},
+    cli::{Cli, Commands, client::send_watch_request},
     config::parser::load_config,
+    daemon::server::DaemonRequest,
     git::repo::Repo,
-    ipc::{client::send_watch_request, server::DaemonRequest},
     stats::interface::display_stats_interface,
 };
 

@@ -12,10 +12,11 @@ use crate::{
         state::AppState,
         watcher::{WatchContext, watch_once},
     },
+    daemon::server::{DaemonRequest, handle_request},
     exec::runner::run_pipeline,
-    ipc::server::{DaemonRequest, handle_request},
 };
 
+#[doc = include_str!("docs/supervisor_loop.md")]
 pub async fn supervisor_loop(state: Arc<AppState>, interval_secs: u64) {
     let mut ticker = interval(Duration::from_secs(interval_secs));
 
@@ -85,6 +86,7 @@ pub async fn get_watch_ctx(state: &Arc<AppState>, id: &str) -> Option<WatchConte
     watches_read.get(id).cloned()
 }
 
+#[doc = include_str!("docs/start_socket_listener.md")]
 pub async fn start_socket_listener(state: Arc<AppState>) -> anyhow::Result<()> {
     let sock_path = Path::new("/tmp/fleetd.sock");
     if sock_path.exists() {

@@ -6,14 +6,14 @@ use crate::{
     core::{
         id::short_id,
         manager::get_watch_ctx,
-        state::{AppState, add_watch, get_id_by_name, get_name_by_id, remove_watch_by_id},
+        state::{AppState, get_id_by_name, get_name_by_id},
         watcher::{WatchContext, WatchContextBuilder},
     },
+    daemon::utiles::extract_repo_path,
     exec::metrics::ExecMetrics,
     exec::runner::run_pipeline,
     git::repo::Repo,
-    ipc::utiles::extract_repo_path,
-    logging::Logger,
+    log::logger::Logger,
 };
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -206,7 +206,7 @@ async fn handle_add_watch(
         {
             // delete the projects with the same project_dir, before saving the new one
             guard.retain(|_, existing_ctx| existing_ctx.project_dir != ctx.project_dir);
-            add_watch(&ctx).await?;
+            AppState::add_watch(&ctx).await?;
             guard.insert(id.clone(), ctx);
         }
         logger
@@ -230,7 +230,7 @@ async fn handle_stop_watch(state: Arc<AppState>, id: String) -> DaemonResponse {
         let mut guard = state.watches.write().await;
         if let Some(w) = guard.get_mut(&id) {
             w.stop();
-            add_watch(w).await?;
+            AppState::add_watch(w).await?;
             Ok::<_, anyhow::Error>(format!("🛑 Watch stopped for ID: {id}"))
         } else {
             Err(anyhow::anyhow!("⚠ ID not found: {}", id))
@@ -249,7 +249,7 @@ pub async fn handle_up_watch(state: Arc<AppState>, id: String) -> DaemonResponse
         let mut guard = state.watches.write().await;
         if let Some(w) = guard.get_mut(&id) {
             w.run();
-            add_watch(w).await?;
+            AppState::add_watch(w).await?;
             Ok::<_, anyhow::Error>(format!("🟢 Watch up for ID: {id}"))
         } else {
             Err(anyhow::anyhow!("⚠ ID not found: {}", id))
@@ -269,7 +269,7 @@ pub async fn handle_rm_watch(state: Arc<AppState>, id: String) -> DaemonResponse
         if let Some(w) = guard.remove(&id) {
             ExecMetrics::rm_metrics_by_id(&id)?; // remove metrics file
             Logger::rm_logs_by_id(&id)?; // remove log file 
-            remove_watch_by_id(&id).await?; // remove this watch in watches.json
+            AppState::remove_watch_by_id(&id).await?; // remove this watch in watches.json
             Ok::<_, anyhow::Error>(format!("Project: {} was deleted", w.repo.name))
         } else {
             Err(anyhow::anyhow!("⚠ ID not found: {}", id))
