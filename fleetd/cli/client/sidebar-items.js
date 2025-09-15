@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["display_logs","handle_daemon_response","print_watches_table","read_daemon_response","send_watch_request"]};

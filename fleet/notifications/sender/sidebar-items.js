@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["discord_send_failure","discord_send_succes","discord_sender"]};

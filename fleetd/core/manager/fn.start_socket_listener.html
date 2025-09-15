@@ -1,0 +1,62 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="`start_socket_listener`"><title>start_socket_listener in fleetd::core::manager - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-84e720fa.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="fleetd" data-themes="" data-resource-suffix="" data-rustdoc-version="1.89.0 (29483883e 2025-08-04)" data-channel="1.89.0" data-search-js="search-92309212.js" data-settings-js="settings-5514c975.js" ><script src="../../../static.files/storage-4e99c027.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../static.files/main-fd3af306.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-32bb7600.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc fn"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../fleetd/index.html">fleetd</a><span class="version">0.1.0</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">start_<wbr>socket_<wbr>listener</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#start_socket_listener" title="`start_socket_listener`"><code>start_socket_listener</code></a><ul><li><a href="#description" title="Description">Description</a></li><li><a href="#arguments" title="Arguments">Arguments</a></li><li><a href="#behavior" title="Behavior">Behavior</a></li><li><a href="#example-usage" title="Example Usage">Example Usage</a></li><li><a href="#notes" title="Notes">Notes</a></li></ul></li></ul></section><div id="rustdoc-modnav"><h2><a href="index.html">In fleetd::<wbr>core::<wbr>manager</a></h2></div></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><div class="rustdoc-breadcrumbs"><a href="../../index.html">fleetd</a>::<wbr><a href="../index.html">core</a>::<wbr><a href="index.html">manager</a></div><h1>Function <span class="fn">start_socket_listener</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../../src/fleetd/core/manager.rs.html#90-125">Source</a> </span></div><pre class="rust item-decl"><code>pub async fn start_socket_listener(state: <a class="struct" href="https://doc.rust-lang.org/1.89.0/alloc/sync/struct.Arc.html" title="struct alloc::sync::Arc">Arc</a>&lt;<a class="struct" href="../state/struct.AppState.html" title="struct fleetd::core::state::AppState">AppState</a>&gt;) -&gt; <a class="type" href="https://docs.rs/anyhow/1.0.99/anyhow/type.Result.html" title="type anyhow::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.89.0/std/primitive.unit.html">()</a>&gt;</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="start_socket_listener"><a class="doc-anchor" href="#start_socket_listener">§</a><code>start_socket_listener</code></h2><h3 id="description"><a class="doc-anchor" href="#description">§</a>Description</h3>
+<p>The <code>start_socket_listener</code> function starts a <strong>Unix domain socket server</strong> that listens for incoming client connections.<br />
+It acts as the main communication entry point for the <code>fleetd</code> daemon, enabling external processes to interact with the orchestrator through JSON-based requests.</p>
+<p>This function runs <strong>indefinitely</strong> in a loop, spawning a new asynchronous task for each client connection.</p>
+<hr />
+<h3 id="arguments"><a class="doc-anchor" href="#arguments">§</a>Arguments</h3>
+<ul>
+<li><code>state: Arc&lt;AppState&gt;</code> – A thread-safe shared reference to the application state (<code>AppState</code>).<br />
+Each client request handler receives a clone of this state, allowing concurrent access to watches.</li>
+</ul>
+<hr />
+<h3 id="behavior"><a class="doc-anchor" href="#behavior">§</a>Behavior</h3>
+<ol>
+<li>
+<p><strong>Socket Initialization</strong></p>
+<ul>
+<li>Creates a Unix domain socket at <code>/tmp/fleetd.sock</code>.</li>
+<li>Removes any stale socket file if it already exists.</li>
+<li>Binds a new listener to the path and sets permissions (<code>0o666</code>) so other processes can connect.</li>
+</ul>
+</li>
+<li>
+<p><strong>Listening Loop</strong></p>
+<ul>
+<li>Prints a startup message (<code>fleetd is listening</code>).</li>
+<li>Waits for incoming client connections in an infinite loop.</li>
+</ul>
+</li>
+<li>
+<p><strong>Client Handling</strong><br />
+For each accepted connection:</p>
+<ul>
+<li>The socket is split into a <strong>read half</strong> and <strong>write half</strong>.</li>
+<li>Reads a single line from the client into a buffer.</li>
+<li>Attempts to parse the buffer as a <code>DaemonRequest</code> (JSON).</li>
+<li>If parsing succeeds, forwards the request to <code>handle_request</code>, passing the shared state and the writable stream.</li>
+<li>If parsing fails, logs an error.</li>
+</ul>
+</li>
+<li>
+<p><strong>Concurrency</strong><br />
+Each client connection is processed in a dedicated Tokio task (<code>tokio::spawn</code>).<br />
+This ensures multiple clients can interact with the daemon concurrently.</p>
+</li>
+</ol>
+<hr />
+<h3 id="example-usage"><a class="doc-anchor" href="#example-usage">§</a>Example Usage</h3>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attr">#[tokio::main]
+</span><span class="kw">async fn </span>main() -&gt; anyhow::Result&lt;()&gt; {
+    <span class="kw">let </span>state = Arc::new(AppState::load_from_disk().<span class="kw">await</span><span class="question-mark">?</span>);
+    start_socket_listener(state).<span class="kw">await
+</span>}</code></pre></div>
+<p>Once running, other processes can connect to <code>/tmp/fleetd.sock</code> and send JSON-formatted requests.</p>
+<hr />
+<h3 id="notes"><a class="doc-anchor" href="#notes">§</a>Notes</h3>
+<ul>
+<li>The socket path <code>/tmp/fleetd.sock</code> is Linux/Unix specific and may need adaptation on other platforms.</li>
+<li>Only <strong>one instance</strong> of <code>fleetd</code> can listen on the socket at a time.</li>
+<li>Proper error handling ensures the daemon does not crash on malformed requests.</li>
+<li>Each client connection is independent, preventing one failing client from blocking others.</li>
+</ul>
+</div></details></section></div></main></body></html>
