@@ -53,7 +53,7 @@ println!("WatchContext initialized for branch: {}", context.branch);
 - The log file is created in the user’s home directory, under ~/.fleet/logs/<id>.log.
 
 - If the home directory cannot be resolved or the logger initialization fails,
-the method returns an error.
+  the method returns an error.
 
 - This method consumes the builder to ensure immutability of the constructed
-[WatchContext].
+  [WatchContext].
