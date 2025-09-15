@@ -2,6 +2,12 @@
 name = "fleet"
 version = "0.1.0"
 edition = "2024"
+authors = ["pepedinho <itahri@student.42.fr>"]
+description = "Fleet is a Rust orchestrator for monitoring and automating pipelines"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/pepedinho/fleet"
+homepage = "https://pepedinho.github.io/fleet/core_lib/"
+documentation = "https://pepedinho.github.io/fleet/core_lib/"
 
 [lib]
 name = "core_lib"
