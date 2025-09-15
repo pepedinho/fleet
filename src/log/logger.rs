@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use std::{io::SeekFrom, path::PathBuf, sync::Arc};
 
 use anyhow::Ok;

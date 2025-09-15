@@ -7,7 +7,7 @@ use tokio::{
     net::UnixStream,
 };
 
-use crate::ipc::server::{DaemonRequest, DaemonResponse, WatchInfo};
+use crate::daemon::server::{DaemonRequest, DaemonResponse, WatchInfo};
 
 pub async fn send_watch_request(req: DaemonRequest) -> Result<(), anyhow::Error> {
     if let DaemonRequest::None = req {

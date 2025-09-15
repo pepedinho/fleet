@@ -1,4 +1,4 @@
-use core_lib::ipc::utiles::extract_repo_path;
+use core_lib::daemon::utiles::extract_repo_path;
 use pretty_assertions::assert_eq;
 
 #[test]

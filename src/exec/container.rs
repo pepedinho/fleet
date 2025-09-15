@@ -15,7 +15,7 @@ use tokio::io::AsyncWriteExt;
 use tokio::time::timeout;
 
 use crate::core::id::short_id;
-use crate::logging::Logger;
+use crate::log::logger::Logger;
 
 async fn ensure_image(docker: &Docker, image: &str, logger: &Logger) -> Result<()> {
     let image_options = CreateImageOptionsBuilder::default()
