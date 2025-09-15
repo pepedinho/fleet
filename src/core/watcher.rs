@@ -10,6 +10,7 @@ use tokio::fs;
 use crate::git::{remote::get_remote_branch_hash, repo::Repo};
 use crate::{config::ProjectConfig, log::logger::Logger};
 
+#[doc = include_str!("docs/watch_context.md")]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WatchContext {
     pub branch: String,
@@ -31,6 +32,7 @@ pub struct WatchContextBuilder {
     paused: bool,
 }
 
+#[doc = include_str!("docs/build.md")]
 impl WatchContextBuilder {
     pub fn new(
         branch: String,
@@ -83,7 +85,7 @@ impl WatchContext {
     }
 
     pub fn log_path(&self) -> PathBuf {
-        let home = home_dir().unwrap();
+        let home: PathBuf = home_dir().unwrap();
 
         let log_dir = home.join(".fleet").join("logs");
         log_dir.join(self.id.to_string() + ".log")
@@ -111,6 +113,7 @@ impl WatchContext {
     }
 }
 
+#[doc = include_str!("docs/watch_once.md")]
 pub async fn watch_once(ctx: &WatchContext) -> Result<Option<String>, anyhow::Error> {
     #[cfg(not(feature = "force_commit"))]
     {
