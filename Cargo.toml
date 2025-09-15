@@ -9,10 +9,6 @@ repository = "https://github.com/pepedinho/fleet"
 homepage = "https://pepedinho.github.io/fleet/core_lib/"
 documentation = "https://pepedinho.github.io/fleet/core_lib/"
 
-[package.metadata.docs.rs]
-rustdoc-args = ["--cfg", "no_doc_tests"]
-
-
 [lib]
 name = "core_lib"
 path = "src/lib.rs"
