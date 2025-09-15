@@ -13,7 +13,7 @@ use crate::{
         watcher::{WatchContext, watch_once},
     },
     daemon::server::{DaemonRequest, handle_request},
-    exec::runner::run_pipeline,
+    exec::pipeline::run_pipeline,
 };
 
 #[doc = include_str!("docs/supervisor_loop.md")]

@@ -11,7 +11,7 @@ use crate::{
     },
     daemon::utiles::extract_repo_path,
     exec::metrics::ExecMetrics,
-    exec::runner::run_pipeline,
+    exec::pipeline::run_pipeline,
     git::repo::Repo,
     log::logger::Logger,
 };
