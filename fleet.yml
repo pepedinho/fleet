@@ -20,7 +20,7 @@ pipeline:
       env:
         RUST_LOG: debug
       steps:
-        - cmd: cargo dfbest --test cli_test -- --test-threads=1
+        - cmd: cargo test --test cli_test -- --test-threads=1
 
     sleep_test:
       steps:
