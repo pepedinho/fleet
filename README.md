@@ -4,6 +4,7 @@
 </h1>
 
 ![Rust](https://img.shields.io/badge/rust-stable-orange)
+[![Documentation](https://docs.rs/tokio/badge.svg)](https://pepedinho.github.io/fleet/core_lib/all.html)
 
 Fleet is a lightweight Rust-based tool for **automated repository monitoring and updating**.
 It runs a background daemon (`fleetd`) that watches your Git repositories, detects remote changes, and executes predefined update commands.
