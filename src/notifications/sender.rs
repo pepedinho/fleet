@@ -1,4 +1,5 @@
 use anyhow::Result;
+use chrono::Utc;
 use reqwest::Client;
 use serde_json::json;
 
@@ -75,15 +76,43 @@ pub async fn discord_send_succes(ctx: &WatchContext, m: &ExecMetrics) -> Result<
 
 /// this function take ctx and msg
 /// msg will be split on ":/:" pattern and divide in field
-pub async fn discord_send_failure(ctx: &WatchContext, msg: &str) -> Result<()> {
+pub async fn discord_send_failure(ctx: &WatchContext, msg: &str, m: &ExecMetrics) -> Result<()> {
     let embed = DiscordEmbed {
         title: "❌ Pipeline failed".into(),
         description: String::from(msg),
         color: 0xE74C3C,
         thumbnail: DiscordImage::load(ctx.config.pipeline.notifications.thumbnail.clone()),
-        fields: vec![],
-        footer: None,
-        timestamp: Some(chrono::Utc::now()),
+        fields: vec![
+            DiscordField {
+                name: "Service name".into(),
+                value: format!("`{}`", ctx.repo.name.clone()),
+                inline: false,
+            },
+            DiscordField {
+                name: "Duration".into(),
+                value: format!("`{:.2}s`", (m.duration_ms.unwrap_or(1) as f64) / 1000.0),
+                inline: true,
+            },
+            DiscordField {
+                name: "CPU".into(),
+                value: format!("`{:.2}%`", m.cpu_usage),
+                inline: true,
+            },
+            DiscordField {
+                name: "Mem (%)".into(),
+                value: format!("`{:.2}%`", m.mem_usage),
+                inline: true,
+            },
+            DiscordField {
+                name: "Mem (Mb)".into(),
+                value: format!("`{}Mb`", m.mem_usage_kb / (1024 * 1024)),
+                inline: true,
+            },
+        ],
+        footer: Some(DiscordFooter {
+            text: "Fleet CI/CD Pipeline".into(),
+        }),
+        timestamp: Some(m.finished_at.unwrap_or(Utc::now())),
     };
     for c in ctx.config.pipeline.notifications.channels.iter() {
         if c.service == "discord" {
