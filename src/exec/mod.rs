@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::{collections::HashMap, fs::File, process::Stdio, sync::Arc};
 
 use anyhow::Result;
@@ -7,6 +8,7 @@ use tokio::{process::Command, sync::Mutex};
 pub mod command;
 pub mod container;
 pub mod metrics;
+pub mod pipeline;
 pub mod runner;
 
 #[allow(clippy::enum_variant_names)]
