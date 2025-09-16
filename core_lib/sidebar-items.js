@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["cli","config","core","daemon","exec","git","log","notifications","stats"]};
+window.SIDEBAR_ITEMS = {"mod":["cli","config","core","daemon","exec","git","log","notifications"]};

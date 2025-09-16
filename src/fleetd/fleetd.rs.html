@@ -14,17 +14,16 @@
 <a href=#14 id=14 data-nosnippet>14</a><span class="kw">mod </span>git;
 <a href=#15 id=15 data-nosnippet>15</a><span class="kw">mod </span>log;
 <a href=#16 id=16 data-nosnippet>16</a><span class="kw">mod </span>notifications;
-<a href=#17 id=17 data-nosnippet>17</a><span class="kw">mod </span>stats;
-<a href=#18 id=18 data-nosnippet>18</a>
-<a href=#19 id=19 data-nosnippet>19</a><span class="attr">#[tokio::main]
-<a href=#20 id=20 data-nosnippet>20</a></span><span class="kw">async fn </span>main() -&gt; anyhow::Result&lt;()&gt; {
-<a href=#21 id=21 data-nosnippet>21</a>    AppState::init_watch_file().<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#22 id=22 data-nosnippet>22</a>    <span class="kw">let </span>state = Arc::new(AppState::load_from_disk().<span class="kw">await</span><span class="question-mark">?</span>);
-<a href=#23 id=23 data-nosnippet>23</a>    WatchContext::init_logs().<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#24 id=24 data-nosnippet>24</a>
-<a href=#25 id=25 data-nosnippet>25</a>    tokio::spawn(supervisor_loop(Arc::clone(<span class="kw-2">&amp;</span>state), <span class="number">15</span>));
-<a href=#26 id=26 data-nosnippet>26</a>
-<a href=#27 id=27 data-nosnippet>27</a>    start_socket_listener(state).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#28 id=28 data-nosnippet>28</a>
-<a href=#29 id=29 data-nosnippet>29</a>    <span class="prelude-val">Ok</span>(())
-<a href=#30 id=30 data-nosnippet>30</a>}</code></pre></div></section></main></body></html>
+<a href=#17 id=17 data-nosnippet>17</a>
+<a href=#18 id=18 data-nosnippet>18</a><span class="attr">#[tokio::main]
+<a href=#19 id=19 data-nosnippet>19</a></span><span class="kw">async fn </span>main() -&gt; anyhow::Result&lt;()&gt; {
+<a href=#20 id=20 data-nosnippet>20</a>    AppState::init_watch_file().<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#21 id=21 data-nosnippet>21</a>    <span class="kw">let </span>state = Arc::new(AppState::load_from_disk().<span class="kw">await</span><span class="question-mark">?</span>);
+<a href=#22 id=22 data-nosnippet>22</a>    WatchContext::init_logs().<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#23 id=23 data-nosnippet>23</a>
+<a href=#24 id=24 data-nosnippet>24</a>    tokio::spawn(supervisor_loop(Arc::clone(<span class="kw-2">&amp;</span>state), <span class="number">15</span>));
+<a href=#25 id=25 data-nosnippet>25</a>
+<a href=#26 id=26 data-nosnippet>26</a>    start_socket_listener(state).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#27 id=27 data-nosnippet>27</a>
+<a href=#28 id=28 data-nosnippet>28</a>    <span class="prelude-val">Ok</span>(())
+<a href=#29 id=29 data-nosnippet>29</a>}</code></pre></div></section></main></body></html>
