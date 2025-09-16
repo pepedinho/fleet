@@ -143,7 +143,7 @@ pub async fn exec_timeout(
                     .await?;
                 return Err(anyhow::anyhow!("Failed command: {:?}", parts));
             }
-            logger.info("Command succeeded").await?;
+            logger.info(&format!("Command {program} succeeded")).await?;
             Ok(output)
         }
         Err(e) => {

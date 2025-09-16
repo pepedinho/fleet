@@ -2,6 +2,7 @@
 
 pub mod builders;
 pub mod client;
+pub mod stats;
 
 use clap::{Parser, Subcommand};
 
