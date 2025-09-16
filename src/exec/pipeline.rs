@@ -134,7 +134,7 @@ async fn run_job(
     }
 
     ctx.logger
-        .info(&format!("Job {} succeeded", job_name))
+        .info(&format!("Job {job_name} succeeded"))
         .await?;
     update_dependents(&graph, &ready_queue, &dependents).await;
     ctx.logger.job_end(&job_name).await?;

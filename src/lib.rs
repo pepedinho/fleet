@@ -21,4 +21,3 @@ pub mod exec;
 pub mod git;
 pub mod log;
 pub mod notifications;
-pub mod stats;
