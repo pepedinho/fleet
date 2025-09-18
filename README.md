@@ -6,10 +6,13 @@
 ![Rust](https://img.shields.io/badge/rust-stable-orange)
 [![Documentation](https://docs.rs/tokio/badge.svg)](https://pepedinho.github.io/fleet/core_lib/all.html)
 
-Fleet is a lightweight Rust-based tool for **automated repository monitoring and updating**.
-It runs a background daemon (`fleetd`) that watches your Git repositories, detects remote changes, and executes predefined update commands.
+Fleet is a **lightweight CI/CD orchestrator** written in Rust.  
+Unlike traditional CI/CD systems (GitHub Actions, GitLab CI, Jenkins…), Fleet is designed to run **directly on your host machine** (Raspberry Pi, server, VPS, NAS…).  
 
-Its goal is to make **continuous deployment and synchronization** simple without relying on heavy CI/CD pipelines.
+It continuously watches your repositories, detects changes, and runs your deployment pipelines **locally**, without relying on external cloud services or heavy infrastructure.  
+
+Think of it as a **local CI/CD daemon**:  
+just `git push` → Fleet pulls, rebuilds, and redeploys on your machine.  
 
 ---
 
@@ -18,6 +21,7 @@ Its goal is to make **continuous deployment and synchronization** simple without
   Summary
 </h2>
 
+* [Why Fleet?](#why-fleet)
 * [Features](#features)
 * [Quick Start](#quick-start)
 * [Commands](#commands)
@@ -25,6 +29,24 @@ Its goal is to make **continuous deployment and synchronization** simple without
 * [How It Works](#how-it-works)
 
 ---
+
+<h2 id="why-fleet">
+  <img src="https://i.pinimg.com/originals/84/dc/71/84dc714e0a4c7e1f89d49499ea579db3.gif" alt="brain" width="30" height="30"/>
+  Why Fleet?
+</h2>
+
+
+Most CI/CD solutions are:  
+- **Cloud-first** → require GitHub, GitLab, or external runners.  
+- **Heavyweight** → need databases, web servers, complex setup.  
+- **Overkill** for small projects.  
+
+Fleet is different:  
+- **Lightweight** → a single Rust binary, no dependencies.  
+- **Local-first** → runs directly on your host (perfect for Raspberry Pi, homelab, VPS).  
+- **Simple** → configure with a `fleet.yml`, and Fleet takes care of pulling & redeploying.  
+- **Connected** → supports notifications (Discord for now, more to come).  
+
 
 <h2 id="features">
   <img src="https://github.com/user-attachments/assets/dc7fc109-abb2-443a-9bc3-8f6721cdd1e8" alt="brain" width="40" height="40"/>
@@ -102,72 +124,41 @@ Each project defines its pipelines with a `fleet.yml` file.
 
 **Example fleet.yml:**
 
+Here’s how I use Fleet to auto-update my Discord bots running on a Raspberry Pi:  
+
 ```yaml
-timeout: 200 # Timeout in seconds for non-blocking commands (default 300)
+ENV: &default_env
+  DISCORD_TOKEN: $
+  D_WEBHOOK_G: $
+  D_WEBHOOK_T: $
+
+timeout: 800
 
 pipeline:
   notifications:
     on: [success, failure]
+    thumbnail: https://github.com/user-attachments/assets/429bf6e8-5724-473e-a560-e9e06bbbc143
     channels:
-      - type: discord
+      - service: discord
         url: https://discord.com/api/webhooks/...
-
   jobs:
-    build:
+    pull:
       steps:
-        - cmd: cargo build
-
-    test_rust:
-      needs: [build]
-      env:
-        RUST_LOG: debug
+        - cmd: echo "Start update"
+        - cmd: git pull
+    
+    down:
       steps:
-        - cmd: cargo test
-
-    echo_test:
-      needs: [build]
-      steps:
-        - cmd: echo test 1
-          container: ubuntu:latest
-
+        - cmd: docker-compose down
+    
     deploy:
-      needs: [test_rust, echo_test]
+      needs: [down, pull]
+      env: *default_env
       steps:
-        - cmd: echo "deploy complete"
-          blocking: true
+        - cmd: docker-compose up --build -d
 ```
 
-<details>
-<summary>Workflow Exemple</summary>
-
-```zsh
-         New commit detected
-                 │
-                 ▼
-               +-----+
-               |build|
-               +--+--+
-                  │
-      ┌-----------┴-----------┐
-      ▼                       ▼
- +-----------+           +-----------+
- | test_rust |           | echo_test |
- +-----------+           +-----------+
-      │                       │
-      └-----------┬-----------┘
-                  ▼
-              +--------+
-              | deploy |
-              +--------+
-                  │
-          ┌-------┴---------┐
-          ▼                 ▼
-  +---------------+    +---------+
-  | Notifications |    |  Stats  |
-  +---------------+    +---------+
-
-```
-</details>
+➡️ Now, every time I push to `main`, Fleet automatically pulls the code and redeploys the bot — no manual SSH, no manual Docker restart.  
 
 **Key Points:**
 
