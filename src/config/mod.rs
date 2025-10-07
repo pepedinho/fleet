@@ -28,7 +28,7 @@ pub struct Job {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq)]
 pub struct Pipeline {
-    pub notifications: Notification,
+    pub notifications: Option<Notification>,
     pub jobs: HashMap<String, Job>,
 }
 
