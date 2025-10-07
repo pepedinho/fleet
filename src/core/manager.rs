@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 use std::{os::unix::fs::PermissionsExt, path::Path, sync::Arc, time::Duration};
 
-use futures_util::future::join_all;
 use tokio::{
     io::{AsyncBufReadExt, BufReader, split},
     net::UnixListener,
@@ -27,8 +26,8 @@ pub async fn supervisor_loop(state: Arc<AppState>, interval_secs: u64) {
         let to_update = collect_updates(&state).await;
         let mut dirty = false;
 
-        for (id, new_commit) in to_update {
-            update_commit(&state, &id, new_commit.clone()).await;
+        for (id, _new_commit) in to_update {
+            // update_commit(&state, &id, new_commit.clone()).await;
             if let Some(ctx) = get_watch_ctx(&state, &id).await {
                 match run_pipeline(Arc::new(ctx)).await {
                     Ok(_) => {
@@ -52,15 +51,16 @@ pub async fn supervisor_loop(state: Arc<AppState>, interval_secs: u64) {
 /// return the (id, new_commit) to update.
 async fn collect_updates(state: &Arc<AppState>) -> Vec<(String, String)> {
     let mut to_update = Vec::new();
-    let guard = state.watches.read().await;
+    let mut guard = state.watches.write().await;
 
-    for (id, ctx) in guard.iter() {
+    for (id, ctx) in guard.iter_mut() {
         if ctx.paused {
             continue;
         }
 
         // TODO: take Branch in arg for watch_once() branch has to be stored in ctx.config.branches
-        match watch_once(ctx).await {
+        println!("yes");
+        match watch_once(&mut ctx.repo) {
             Ok(Some(new_commit)) => {
                 println!("[{id}] ✔ OK");
                 to_update.push((id.clone(), new_commit));

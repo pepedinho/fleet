@@ -10,10 +10,10 @@ use pretty_assertions::assert_eq;
 #[tokio::test]
 async fn test_build_watch_request_branch_none() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli {
-        command: cli::Commands::Watch { branch: None },
+        command: cli::Commands::Watch,
     };
 
-    let repo = Repo::build(None)?;
+    let repo = Repo::default_build()?;
     let config = load_config(Path::new("./fleet.yml"))?;
 
     let watch_req = build_watch_request(&cli).await?;
@@ -21,7 +21,6 @@ async fn test_build_watch_request_branch_none() -> Result<(), Box<dyn std::error
         watch_req,
         DaemonRequest::AddWatch {
             project_dir: std::env::current_dir()?.to_string_lossy().into_owned(),
-            branch: repo.branch.clone(),
             repo: Box::new(repo),
             config: Box::new(config),
         }
@@ -32,11 +31,9 @@ async fn test_build_watch_request_branch_none() -> Result<(), Box<dyn std::error
 
 #[tokio::test]
 async fn test_build_watch_request_branch_some() -> Result<(), Box<dyn std::error::Error>> {
-    let repo = Repo::build(None)?;
+    let repo = Repo::default_build()?;
     let cli = Cli {
-        command: cli::Commands::Watch {
-            branch: Some(repo.branch.clone()),
-        },
+        command: cli::Commands::Watch,
     };
 
     let config = load_config(Path::new("./fleet.yml"))?;
@@ -46,7 +43,6 @@ async fn test_build_watch_request_branch_some() -> Result<(), Box<dyn std::error
         watch_req,
         DaemonRequest::AddWatch {
             project_dir: std::env::current_dir()?.to_string_lossy().into_owned(),
-            branch: repo.branch.clone(),
             repo: Box::new(repo),
             config: Box::new(config),
         }

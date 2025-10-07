@@ -4,13 +4,20 @@ use core_lib::{
     config::{Cmd, Job, Pipeline, ProjectConfig},
     core::watcher::{WatchContext, WatchContextBuilder},
     exec::pipeline::run_pipeline,
-    git::repo::Repo,
+    git::repo::{Branch, Branches, Repo},
 };
 
 fn build_repo() -> Repo {
     Repo {
-        branch: "main".to_string(),
-        last_commit: "abc".to_string(),
+        branches: Branches {
+            name: "main".to_string(),
+            branches: vec![Branch {
+                name: "main".to_string(),
+                remote: "git://github.com/pepedinho/fleet.git".to_string(),
+                ..Default::default()
+            }],
+            last_commit: "abc".to_string(),
+        },
         name: "name".to_string(),
         remote: "git://github.com/pepedinho/fleet.git".to_string(),
     }
@@ -22,19 +29,13 @@ async fn build_test_ctx(id: &str, jobs: HashMap<String, Job>) -> anyhow::Result<
             jobs,
             ..Default::default()
         },
-        branch: None,
+        branches: vec![],
         timeout: None,
     };
     Ok(Arc::new(
-        WatchContextBuilder::new(
-            "main".to_string(),
-            build_repo(),
-            config,
-            ".".to_string(),
-            id.to_string(),
-        )
-        .build()
-        .await?,
+        WatchContextBuilder::new(build_repo(), config, ".".to_string(), id.to_string())
+            .build()
+            .await?,
     ))
 }
 
@@ -507,12 +508,11 @@ async fn test_timeout_job() -> anyhow::Result<()> {
             jobs,
             ..Default::default()
         },
-        branch: None,
+        branches: vec![],
         timeout: Some(2),
     };
     let ctx = Arc::new(
         WatchContextBuilder::new(
-            "main".to_string(),
             build_repo(),
             config,
             ".".to_string(),
