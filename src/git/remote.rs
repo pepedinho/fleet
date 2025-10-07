@@ -61,8 +61,8 @@ pub fn get_remote_branch_hash(url: &str, branch: &str) -> Result<String, Error> 
     //     }
     // }
 
-    let branch_name = if branch.starts_with("origin/") {
-        &branch["origin/".len()..]
+    let branch_name = if let Some(end) = branch.strip_prefix("origin/") {
+        end
     } else {
         branch
     };

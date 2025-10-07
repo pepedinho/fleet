@@ -123,5 +123,5 @@ pub fn watch_once(repo: &mut Repo) -> Result<Option<String>, anyhow::Error> {
         Ok(first_new)
     }
     #[cfg(feature = "force_commit")]
-    return Ok(Some(ctx.repo.last_commit.clone()));
+    return Ok(Some(repo.branches.last_commit.clone()));
 }
