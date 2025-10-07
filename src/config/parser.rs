@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet}, env::VarError, fs, io::{Read, Write}, path::Path
+    collections::{HashMap, HashSet}, fs, io::{Read, Write}, path::Path
 };
 
 use anyhow::{Context, Ok, Result};
