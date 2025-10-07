@@ -115,7 +115,7 @@ pub fn load_config(path: &Path) -> Result<ProjectConfig> {
 fn missing_env_validation(env_key: &str) -> Result<bool> {
 
     eprintln!("Warning: Environment variable \"{env_key}\" is not set");
-    print!("Continue anyway ? [y/N]");
+    eprint!("Continue anyway ? [y/N]");
     std::io::stdout().flush()?;
 
     let mut buffer = [0_u8; 1];
