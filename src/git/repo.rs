@@ -98,7 +98,7 @@ impl Repo {
                     .ok_or_else(|| Error::from_str("Failed to parse repo name from remote URL"))?
                     .to_string();
                 Ok(Branch {
-                    branch: branch,
+                    branch,
                     last_commit: commit,
                     remote: remote.clone(),
                     name: repo_name.clone(),
