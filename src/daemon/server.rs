@@ -29,7 +29,7 @@ pub enum DaemonRequest {
     #[serde(rename = "add_watch")]
     AddWatch {
         project_dir: String,
-        branch: String,
+        branches: Vec<String>,
         // use Box (clippy)
         repo: Box<Repo>,
         config: Box<ProjectConfig>,
