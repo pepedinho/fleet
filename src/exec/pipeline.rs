@@ -167,13 +167,12 @@ async fn handle_job_failure(
 ) -> Result<()> {
     let mut m = metrics.lock().await;
     m.job_finished(job_name, false);
-    if ctx
-        .config
-        .pipeline
-        .notifications
-        .on
-        .contains(&"failure".to_string())
-    {
+
+    let need_notif_on_failure = ctx.config.pipeline.notifications.as_ref()
+        .map(|notif| notif.on.contains(&"failure".to_string()))
+        .unwrap_or(false);
+
+    if need_notif_on_failure {
         let err = error.to_string();
         let lines: Vec<&str> = err.lines().collect();
         let first_line = lines.first().unwrap_or(&"");
@@ -230,6 +229,14 @@ async fn finalize_pipeline(
     let mut m = metrics.lock().await;
     m.finalize();
     m.save().await?;
-    discord_send_succes(ctx, &m).await?;
+
+    let need_notif_on_success = ctx.config.pipeline.notifications.as_ref()
+        .map(|notif| notif.on.contains(&"success".to_string()))
+        .unwrap_or(false);
+
+    if need_notif_on_success {
+        discord_send_succes(ctx, &m).await?;
+    }
+
     Ok(())
 }
