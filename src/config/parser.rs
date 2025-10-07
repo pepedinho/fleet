@@ -1,7 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
-    fs,
-    path::Path,
+    collections::{HashMap, HashSet}, env::VarError, fs, io::{Read, Write}, path::Path
 };
 
 use anyhow::{Context, Ok, Result};
@@ -86,12 +84,23 @@ pub fn load_config(path: &Path) -> Result<ProjectConfig> {
                 if value.starts_with("$") == false { continue; }
 
                 let env_key = &value[1..];
-                if env_key.is_empty() {
-                    *value = std::env::var(name).unwrap_or(String::from(""));
+
+                let env_value = if env_key.is_empty() {
+                    std::env::var(name)
                 } else {
-                    *value = std::env::var(env_key).unwrap_or(String::from(""));
+                    std::env::var(env_key)
                 };
 
+                if env_value.is_ok() {
+                    *value = env_value.unwrap();
+                    continue;
+                }
+
+                if missing_env_validation(env_key)? == true {
+                    *value = String::from("");
+                } else {
+                    return Err(env_value.err().unwrap().into());
+                }
             }
         }
     }
@@ -101,4 +110,18 @@ pub fn load_config(path: &Path) -> Result<ProjectConfig> {
     // dbg!(&config);
 
     Ok(config)
+}
+
+fn missing_env_validation(env_key: &str) -> Result<bool> {
+
+    eprintln!("Warning: Environment variable \"{env_key}\" is not set");
+    print!("Continue anyway ? [y/N]");
+    std::io::stdout().flush()?;
+
+    let mut buffer = [0_u8; 1];
+    std::io::stdin().read_exact(&mut buffer)?;
+
+    let input = buffer[0] as char;
+
+    Ok(input == 'y' || input == 'Y')
 }
