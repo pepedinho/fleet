@@ -4,6 +4,7 @@ ENV: &default_env
   SECRET_TOKEN: $
   TEST_KEY: "oui"
 
+branches: ['*']
 
 timeout: 200
 

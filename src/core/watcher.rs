@@ -8,12 +8,11 @@ use tokio::fs;
 
 #[allow(unused_imports)]
 use crate::git::{remote::get_remote_branch_hash, repo::Repo};
-use crate::{config::ProjectConfig, git::repo::Branch, log::logger::Logger};
+use crate::{config::ProjectConfig, log::logger::Logger};
 
 #[doc = include_str!("docs/watch_context.md")]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WatchContext {
-    pub branch: String,
     pub repo: Repo,
     pub config: ProjectConfig,
     pub project_dir: String,
@@ -24,7 +23,6 @@ pub struct WatchContext {
 }
 
 pub struct WatchContextBuilder {
-    branch: String,
     repo: Repo,
     config: ProjectConfig,
     project_dir: String,
@@ -34,15 +32,8 @@ pub struct WatchContextBuilder {
 
 #[doc = include_str!("docs/build.md")]
 impl WatchContextBuilder {
-    pub fn new(
-        branch: String,
-        repo: Repo,
-        config: ProjectConfig,
-        project_dir: String,
-        id: String,
-    ) -> Self {
+    pub fn new(repo: Repo, config: ProjectConfig, project_dir: String, id: String) -> Self {
         Self {
-            branch,
             repo,
             config,
             project_dir,
@@ -57,7 +48,6 @@ impl WatchContextBuilder {
 
         // Construction du WatchContext complet
         Ok(WatchContext {
-            branch: self.branch,
             repo: self.repo,
             config: self.config,
             project_dir: self.project_dir,
@@ -114,19 +104,23 @@ impl WatchContext {
 }
 
 #[doc = include_str!("docs/watch_once.md")]
-pub async fn watch_once(branch: &Branch) -> Result<Option<String>, anyhow::Error> {
+pub fn watch_once(repo: &mut Repo) -> Result<Option<String>, anyhow::Error> {
     #[cfg(not(feature = "force_commit"))]
     {
-        let remote_hash = get_remote_branch_hash(&branch.remote, &branch.name)?;
+        let res = repo.branches.try_for_each(|b| {
+            let remote_hash = get_remote_branch_hash(&b.remote, &b.branch)?;
 
-        if remote_hash != branch.last_commit {
-            println!(
-                "new commit detected: {} -> {}",
-                branch.last_commit, remote_hash
-            );
-            return Ok(Some(remote_hash));
-        }
-        return Ok(None);
+            if remote_hash != b.last_commit {
+                b.last_commit = remote_hash.clone();
+                println!("new commit detected: {} -> {}", b.last_commit, remote_hash);
+                return Ok(Some(remote_hash));
+            }
+            return Ok(None);
+        })?;
+
+        let first_new = res.into_iter().flatten().next();
+        println!(" debug : first new : {:#?}", first_new);
+        Ok(first_new)
     }
     #[cfg(feature = "force_commit")]
     return Ok(Some(ctx.repo.last_commit.clone()));

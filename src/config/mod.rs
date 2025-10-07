@@ -36,8 +36,7 @@ pub struct Pipeline {
 pub struct ProjectConfig {
     pub pipeline: Pipeline,
 
-    #[serde(default)]
-    pub branches: Option<Vec<String>>,
+    pub branches: Vec<String>,
 
     #[serde(default)]
     pub timeout: Option<u64>,

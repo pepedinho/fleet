@@ -8,7 +8,7 @@ pub struct Repo {
     pub remote: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 pub struct Branch {
     pub branch: String,
     pub last_commit: String,
@@ -19,27 +19,11 @@ pub struct Branch {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Branches {
     pub branches: Vec<Branch>,
+    pub last_commit: String, // the last commit who triggered a pipeline
+    pub name: String,        // the last name of the branch who triggered a pipeline
 }
 
 impl Branches {
-    pub fn new() -> Self {
-        Branches {
-            branches: Vec::new(),
-        }
-    }
-
-    pub fn push(&mut self, branch: Branch) {
-        self.branches.push(branch);
-    }
-
-    pub fn last(&self) -> anyhow::Result<Branch> {
-        if let Some(last) = self.branches.last().cloned() {
-            Ok(last)
-        } else {
-            anyhow::bail!("failed to recover branch");
-        }
-    }
-
     pub fn last_mut(&mut self) -> anyhow::Result<&mut Branch> {
         if let Some(last) = self.branches.last_mut() {
             Ok(last)
@@ -48,40 +32,27 @@ impl Branches {
         }
     }
 
-    pub fn for_each<F>(&self, f: F)
+    pub fn try_for_each<F, T>(&mut self, mut f: F) -> anyhow::Result<Vec<T>>
     where
-        F: Fn(&Branch),
+        F: FnMut(&mut Branch) -> anyhow::Result<T>,
     {
-        for branch in &self.branches {
-            f(branch);
-        }
-    }
+        let mut results = Vec::new();
 
-    pub async fn for_each_async<F, Fut>(&mut self, mut f: F)
-    where
-        F: FnMut(&mut Branch) -> Fut,
-        Fut: std::future::Future<Output = ()>,
-    {
         for branch in &mut self.branches {
-            f(branch).await;
+            results.push(f(branch)?);
         }
-    }
 
-    pub async fn try_for_each_async<F, Fut>(&mut self, mut f: F) -> anyhow::Result<()>
-    where
-        F: FnMut(&mut Branch) -> Fut,
-        Fut: std::future::Future<Output = anyhow::Result<()>>,
-    {
-        for branch in &mut self.branches {
-            f(branch).await?;
-        }
-        Ok(())
+        Ok(results)
     }
 }
 
 impl From<Vec<Branch>> for Branches {
     fn from(branches: Vec<Branch>) -> Self {
-        Branches { branches }
+        Branches {
+            branches,
+            last_commit: String::default(),
+            name: String::default(),
+        }
     }
 }
 
@@ -89,6 +60,8 @@ impl From<Branch> for Branches {
     fn from(branch: Branch) -> Self {
         Branches {
             branches: vec![branch],
+            last_commit: String::default(),
+            name: String::default(),
         }
     }
 }
@@ -103,7 +76,7 @@ impl Repo {
             .iter()
             .map(|name| {
                 let (branch, commit) = {
-                    let branch_ref = repo.find_branch(name, git2::BranchType::Local)?;
+                    let branch_ref = repo.find_branch(name, git2::BranchType::Remote)?;
                     let target = branch_ref.get().peel_to_commit()?;
 
                     let branch_name = branch_ref
