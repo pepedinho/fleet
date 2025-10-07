@@ -78,11 +78,20 @@ pub fn load_config(path: &Path) -> Result<ProjectConfig> {
 
     // resolve secret env variable for each job
     for (_name, job) in config.pipeline.jobs.iter_mut() {
-        if let Some(env_map) = job.env.as_mut() {
-            for (key, value) in env_map.iter_mut() {
-                if value == "$" {
-                    *value = std::env::var(key).unwrap_or_default(); // if not found default value is ""
-                }
+
+        let env_map = job.env.as_mut();
+        if env_map.is_some() {
+
+            for (name, value) in env_map.unwrap().iter_mut() {
+                if value.starts_with("$") == false { continue; }
+
+                let env_key = &value[1..];
+                if env_key.is_empty() {
+                    *value = std::env::var(name).unwrap_or(String::from(""));
+                } else {
+                    *value = std::env::var(env_key).unwrap_or(String::from(""));
+                };
+
             }
         }
     }
