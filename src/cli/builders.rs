@@ -45,14 +45,25 @@ fn build_add_watch_request(branch_cli: Option<String>) -> Result<DaemonRequest> 
     }
 
     let config = load_config(config_path)?;
-    let branch = branch_cli
-        .or(config.branch.clone())
-        .unwrap_or(Repo::build(None)?.branch.clone());
-    let repo = Repo::build(Some(branch.clone()))?;
+
+    // let branch = branch_cli
+    //     .or(config.branches.clone())
+    //     .unwrap_or(Repo::build(None)?.branch.clone());
+
+    let branches = if let Some(b) = config.branches.clone() {
+        b
+    } else {
+        if let Some(b) = branch_cli {
+            vec![b]
+        } else {
+            anyhow::bail!("No branch found");
+        }
+    };
+    let repo = Repo::build(branches.clone())?;
 
     Ok(DaemonRequest::AddWatch {
         project_dir: std::env::current_dir()?.to_string_lossy().into_owned(),
-        branch,
+        branches,
         repo: Box::new(repo),
         config: Box::new(config),
     })
@@ -66,7 +77,7 @@ fn build_logs_request(id_or_name: &Option<String>, follow: bool) -> Result<Daemo
             f: follow,
         }),
         None => {
-            let repo = Repo::build(None)?;
+            let repo = Repo::default_build()?;
             Ok(DaemonRequest::LogsWatches {
                 id: repo.name,
                 f: follow,

@@ -2,7 +2,7 @@
 use std::path::PathBuf;
 
 use dirs::home_dir;
-use git2::{Cred, Error, Remote, RemoteCallbacks};
+use git2::{BranchType, Cred, Error, Remote, RemoteCallbacks, Repository};
 
 fn find_ssh_key() -> Result<PathBuf, Error> {
     let keys_name = vec![String::from("id_ed25519"), String::from("id_rsa")];
@@ -62,4 +62,26 @@ pub fn get_remote_branch_hash(url: &str, branch: &str) -> Result<String, Error> 
     }
 
     Err(git2::Error::from_str(&format!("Branch {branch} not found")))
+}
+
+/// search in current repository all remotes branches and store it in Vec<String>
+pub fn branch_wildcard() -> anyhow::Result<Vec<String>> {
+    let repo = Repository::open(".")?;
+    branch_wildcard_from_repo(&repo)
+}
+
+// search in the repo provided in argument all remotes branches and store it in Vec<String>
+pub fn branch_wildcard_from_repo(repo: &Repository) -> anyhow::Result<Vec<String>> {
+    let branches = repo.branches(Some(BranchType::Remote))?;
+
+    let names: Vec<_> = branches
+        .into_iter()
+        .map(|b| {
+            let (branche, _) = b?;
+            let name = branche.name()?;
+            Ok(name.unwrap_or("").to_string())
+        })
+        .collect::<Result<Vec<_>, git2::Error>>()?;
+
+    Ok(names)
 }

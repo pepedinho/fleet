@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 use std::{os::unix::fs::PermissionsExt, path::Path, sync::Arc, time::Duration};
 
+use futures_util::future::join_all;
 use tokio::{
     io::{AsyncBufReadExt, BufReader, split},
     net::UnixListener,
@@ -57,6 +58,8 @@ async fn collect_updates(state: &Arc<AppState>) -> Vec<(String, String)> {
         if ctx.paused {
             continue;
         }
+
+        // TODO: take Branch in arg for watch_once() branch has to be stored in ctx.config.branches
         match watch_once(ctx).await {
             Ok(Some(new_commit)) => {
                 println!("[{id}] ✔ OK");
@@ -71,11 +74,12 @@ async fn collect_updates(state: &Arc<AppState>) -> Vec<(String, String)> {
 }
 
 /// Updates the commit stored in the state for a given watch.
-async fn update_commit(state: &Arc<AppState>, id: &str, new_commit: String) {
+async fn update_commit(state: &Arc<AppState>, id: &str, new_commit: String) -> anyhow::Result<()> {
     let mut watches_write = state.watches.write().await;
     if let Some(ctx) = watches_write.get_mut(id) {
-        ctx.repo.last_commit = new_commit;
+        ctx.repo.branches.last_mut()?.last_commit = new_commit;
     }
+    Ok(())
 }
 
 pub async fn get_watch_ctx(state: &Arc<AppState>, id: &str) -> Option<WatchContext> {

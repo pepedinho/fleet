@@ -8,7 +8,7 @@ use tokio::fs;
 
 #[allow(unused_imports)]
 use crate::git::{remote::get_remote_branch_hash, repo::Repo};
-use crate::{config::ProjectConfig, log::logger::Logger};
+use crate::{config::ProjectConfig, git::repo::Branch, log::logger::Logger};
 
 #[doc = include_str!("docs/watch_context.md")]
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -114,15 +114,15 @@ impl WatchContext {
 }
 
 #[doc = include_str!("docs/watch_once.md")]
-pub async fn watch_once(ctx: &WatchContext) -> Result<Option<String>, anyhow::Error> {
+pub async fn watch_once(branch: &Branch) -> Result<Option<String>, anyhow::Error> {
     #[cfg(not(feature = "force_commit"))]
     {
-        let remote_hash = get_remote_branch_hash(&ctx.repo.remote, &ctx.branch)?;
+        let remote_hash = get_remote_branch_hash(&branch.remote, &branch.name)?;
 
-        if remote_hash != ctx.repo.last_commit {
+        if remote_hash != branch.last_commit {
             println!(
                 "new commit detected: {} -> {}",
-                ctx.repo.last_commit, remote_hash
+                branch.last_commit, remote_hash
             );
             return Ok(Some(remote_hash));
         }
