@@ -26,55 +26,38 @@ When generating a Pull Request description, provide a clear, developer-oriented 
 
 3. **Changes**
 
-   * Use bullet points.
-   * Each item should have a clear title followed by a short explanation.
+   * Use `### Title of the change` as a subheading for each change
+   * Follow with a brief description of the change
+   * Always include minimal examples to illustrate behavior changes or new features
+   * Examples must be shown in fenced code blocks with appropriate language tags
+   * Use the "Before/After" format to show code changes clearly
 
-4. **Before / After Examples**
-
-   * Always include minimal examples to illustrate behavior changes or new features.
-   * Examples must be shown in fenced code blocks.
-   * Two acceptable formats:
-
-   ### A. Full Code Snippets
-
+   ***Example***
    ````markdown
-   ### Before
-   ```json
-   {
-     "host": "localhost",
-     "port": 5432
-   }
-   ````
+   ### Title of the change
+   Brief description of the change
 
-   ### After
-
-   ```json
-   {
-     "host": "localhost",
-     "port": 5432,
-     "username": "admin"
+   **Before:**
+   ```rust
+   pub struct Pipeline {
+       pub notifications: Notification,
+       pub jobs: HashMap<String, Job>,
    }
    ```
 
+   **After:**
+   ```rust
+   pub struct Pipeline {
+       pub notifications: Option<Notification>,
+       pub jobs: HashMap<String, Job>,
+   }
+   ```
    ````
-
-   ### B. Clean Diff
-   ```diff
-   {
-     "host": "localhost",
-     "port": 5432
-   -}
-   +, "username": "admin"}
-   ````
-
-   * Allowed: `+` and `-` to indicate additions/removals.
-   * Not allowed: diffhunks (`@@ ... @@`) or truncated context.
-
-5. **Notes**
+4. **Notes**
 
    * If the change has special implications (migrations, dependencies, compatibility issues), add a *Notes* section.
 
-6. **Style**
+5. **Style**
 
    * Be concise and to the point.
    * Avoid long sentences or unnecessary explanations.
@@ -91,11 +74,33 @@ When generating a Pull Request description, provide a clear, developer-oriented 
 <Brief explanation of the PR>
 
 ## Changes
-- <Bullet points of changes>
 
-## Before / After Examples
-<Code snippets showing changes>
+### <Change title>
+<Brief description of the change>
+
+**Before:**
+```<language>
+<code before change>
+```
+
+**After:**
+```<language>
+<code after change>
+```
+
+### <Another change title>
+<Brief description of another change>
+
+**Before:**
+```<language>
+<code before change>
+```
+
+**After:**
+```<language>
+<code after change>
+```
 
 ## Notes
-<Any additional notes>
+<Any additional notes about migrations, dependencies, compatibility issues, etc.>
 ```
