@@ -16,12 +16,22 @@ async fn test_build_watch_request_branch_some() -> Result<(), Box<dyn std::error
 
     let config = load_config(Path::new("./fleet.yml"))?;
     let (branches, b_name) = if config.branches[0] == "*" {
-        (branch_wildcard()?, "*".to_string())
+        (branch_wildcard()?, "*".to_string()) // if is wildcard branch we use '*' as branch name
     } else {
-        (config.branches.clone(), config.branches[0].clone())
+        // else if is one or more branch we use the last branch name
+        // e.g: ["main", "test", "abc"] -> b_name will be "abc"
+        (
+            config.branches.clone(),
+            config
+                .branches
+                .last()
+                .unwrap_or(&config.branches[0])
+                .clone(),
+        )
     };
     let mut repo = Repo::build(branches)?;
     repo.branches.name = b_name;
+    repo.branches.last_commit = repo.branches.default_last_commit()?;
     let watch_req = build_watch_request(&cli).await?;
     assert_eq!(
         watch_req,
