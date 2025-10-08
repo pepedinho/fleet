@@ -1,3 +1,5 @@
+#![allow(clippy::bool_comparison)]
+
 use clap::Parser;
 
 use crate::cli::{Cli, builders::handle_watch};

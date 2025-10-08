@@ -13,6 +13,8 @@
 //! - Returns `None` if no new commit is detected.
 //! - Returns `Err` if an error occurs while fetching the remote hash.
 
+#![allow(clippy::bool_comparison)]
+
 pub mod cli;
 pub mod config;
 pub mod core;
