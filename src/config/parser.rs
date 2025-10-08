@@ -71,23 +71,45 @@ pub fn check_dependency_graph(config: &ProjectConfig) -> Result<()> {
 }
 
 pub fn load_config(path: &Path) -> Result<ProjectConfig> {
-    dbg!(path);
     let content =
         fs::read_to_string(path).with_context(|| format!("Error reading config file {path:?}"))?;
 
     let mut config: ProjectConfig =
         serde_yaml::from_str(&content).with_context(|| "Error parsing YAML configuration file")?;
 
+    let mut missing_variables_skipped: HashSet<&str> = HashSet::new();
+
     // resolve secret env variable for each job
-    for (_job_name, job) in config.pipeline.jobs.iter_mut() {
+    for (job_name, job) in config.pipeline.jobs.iter_mut() {
         let env_map = job.env.as_mut();
         if env_map.is_none() {
             continue;
         }
 
         for (name, value) in env_map.unwrap().iter_mut() {
-            if let Some(env_value) = extract_env_value(value, name)? {
-                *value = env_value
+            if !value.starts_with("$") {
+                continue;
+            }
+
+            let extraction_result = extract_env_value(&value[1..], name);
+            if let Ok(env_value) = extraction_result {
+                *value = env_value;
+                continue;
+            }
+
+            // env variable not found
+            let env_key = &value[1..];
+            eprintln!(r#"WARNING: "${env_key}" not found for job {job_name}"#);
+
+            if missing_variables_skipped.contains(env_key) {
+                continue;
+            }
+
+            if ask_continue_anyway()? {
+                missing_variables_skipped.insert(env_key);
+                continue;
+            } else {
+                return Err(extraction_result.unwrap_err())
             }
         }
     }
@@ -99,45 +121,35 @@ pub fn load_config(path: &Path) -> Result<ProjectConfig> {
     Ok(config)
 }
 
-fn extract_env_value(value: &str, default_env_name: &str) -> Result<Option<String>> {
-    // return None if value is not an environment_variable
-    if !value.starts_with("$") {
-        return Ok(None);
-    }
-
-    let env_name = &value[1..];
-
-    let env_value_result = if env_name.is_empty() {
-        std::env::var(default_env_name)
+fn extract_env_value(env_key: &str, default_env_name: &str) -> Result<String> {
+    let env_value = if env_key.is_empty() {
+        std::env::var(default_env_name)?
     } else {
-        std::env::var(env_name)
+        std::env::var(env_key)?
     };
 
-    if let Ok(env_value) = env_value_result {
-        return Ok(Some(env_value))
-    }
+    return Ok(env_value);
+}
 
-    eprintln!("Warning: Environment variable \"{value}\" is not set");
-    eprintln!("Warning: Value will be replaced by an empty string (\"\")");
-
+fn ask_continue_anyway() -> Result<bool> {
     loop {
         eprint!("Continue anyway ? [y/N] ");
         std::io::stdout().flush()?;
-        
+
         let mut buffer = [0_u8; 1];
         std::io::stdin().read_exact(&mut buffer)?;
         eprintln!();
 
         let input = buffer[0] as char;
-        
+
         match input {
-            'y' | 'Y' => return Ok(Some("".to_string())),
-            'n' | 'N' => return Err(env_value_result.err().unwrap().into()),
+            'y' | 'Y' => return Ok(true),
+            'n' | 'N' => return Ok(false),
 
             _ => {
                 eprintln!("Invalid input, please retry.");
-                continue
-            },
+                continue;
+            }
         }
     }
 }
