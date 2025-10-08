@@ -15,6 +15,7 @@ use crate::{
     },
     daemon::server::{DaemonRequest, handle_request},
     exec::pipeline::run_pipeline,
+    git::repo::Repo,
 };
 
 #[doc = include_str!("docs/supervisor_loop.md")]
@@ -71,6 +72,8 @@ async fn collect_updates(state: &Arc<AppState>) -> Vec<(String, String)> {
                     ))
                     .await
                     .ok(); // ignore log fail
+                //for the moment i ignore the error but in the futur i have to handle it correctly
+                Repo::switch_branch(ctx, &ctx.repo.branches.last_name).ok();
                 to_update.push((id.clone(), new_commit));
             }
             Ok(None) => {}
