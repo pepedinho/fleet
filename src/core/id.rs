@@ -5,3 +5,11 @@ pub fn short_id() -> String {
     OsRng.fill_bytes(&mut bytes);
     hex::encode(bytes)[..12].to_string()
 }
+
+pub fn format_commit(commit: &str) -> String {
+    if commit.len() > 10 {
+        commit[..10].to_string()
+    } else {
+        commit.to_string()
+    }
+}
