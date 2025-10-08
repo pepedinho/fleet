@@ -5,7 +5,7 @@ use std::{
     path::Path,
 };
 
-use anyhow::{Context, Ok, Result};
+use anyhow::{Context, Result};
 
 use crate::config::{Job, ProjectConfig};
 
@@ -71,6 +71,7 @@ pub fn check_dependency_graph(config: &ProjectConfig) -> Result<()> {
 }
 
 pub fn load_config(path: &Path) -> Result<ProjectConfig> {
+    dbg!(path);
     let content =
         fs::read_to_string(path).with_context(|| format!("Error reading config file {path:?}"))?;
 
@@ -85,27 +86,8 @@ pub fn load_config(path: &Path) -> Result<ProjectConfig> {
         }
 
         for (name, value) in env_map.unwrap().iter_mut() {
-            if value.starts_with("$") == false {
-                continue;
-            }
-
-            let env_key = &value[1..];
-
-            let env_value = if env_key.is_empty() {
-                std::env::var(name)
-            } else {
-                std::env::var(env_key)
-            };
-
-            if env_value.is_ok() {
-                *value = env_value.unwrap();
-                continue;
-            }
-
-            if missing_env_validation(env_key)? == true {
-                *value = String::from("");
-            } else {
-                return Err(env_value.err().unwrap().into());
+            if let Some(env_value) = extract_env_value(value, name)? {
+                *value = env_value
             }
         }
     }
@@ -117,15 +99,45 @@ pub fn load_config(path: &Path) -> Result<ProjectConfig> {
     Ok(config)
 }
 
-fn missing_env_validation(env_key: &str) -> Result<bool> {
-    eprintln!("Warning: Environment variable \"{env_key}\" is not set");
-    eprint!("Continue anyway ? [y/N]");
-    std::io::stdout().flush()?;
+fn extract_env_value(value: &str, default_env_name: &str) -> Result<Option<String>> {
+    // return None if value is not an environment_variable
+    if !value.starts_with("$") {
+        return Ok(None);
+    }
 
-    let mut buffer = [0_u8; 1];
-    std::io::stdin().read_exact(&mut buffer)?;
+    let env_name = &value[1..];
 
-    let input = buffer[0] as char;
+    let env_value_result = if env_name.is_empty() {
+        std::env::var(default_env_name)
+    } else {
+        std::env::var(env_name)
+    };
 
-    Ok(input == 'y' || input == 'Y')
+    if let Ok(env_value) = env_value_result {
+        return Ok(Some(env_value))
+    }
+
+    eprintln!("Warning: Environment variable \"{value}\" is not set");
+    eprintln!("Warning: Value will be replaced by an empty string (\"\")");
+
+    loop {
+        eprint!("Continue anyway ? [y/N] ");
+        std::io::stdout().flush()?;
+        
+        let mut buffer = [0_u8; 1];
+        std::io::stdin().read_exact(&mut buffer)?;
+        eprintln!();
+
+        let input = buffer[0] as char;
+        
+        match input {
+            'y' | 'Y' => return Ok(Some("".to_string())),
+            'n' | 'N' => return Err(env_value_result.err().unwrap().into()),
+
+            _ => {
+                eprintln!("Invalid input, please retry.");
+                continue
+            },
+        }
+    }
 }
