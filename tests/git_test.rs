@@ -1,4 +1,4 @@
-use std::fs;
+use std::fs::{self};
 
 use anyhow::Result;
 use core_lib::git::remote::branch_wildcard_from_repo;

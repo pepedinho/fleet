@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use dirs::home_dir;
 use git2::{BranchType, Cred, Error, Remote, RemoteCallbacks, Repository};
 
-fn find_ssh_key() -> Result<PathBuf, Error> {
+pub fn find_ssh_key() -> Result<PathBuf, Error> {
     let keys_name = vec![String::from("id_ed25519"), String::from("id_rsa")];
     for k in keys_name {
         let ssh_key_path = home_dir()

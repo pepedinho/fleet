@@ -1,5 +1,7 @@
-use git2::{Error, Repository};
+use git2::{Cred, Error, FetchOptions, RemoteCallbacks, Repository};
 use serde::{Deserialize, Serialize};
+
+use crate::{core::watcher::WatchContext, git::remote::find_ssh_key};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Repo {
@@ -182,5 +184,85 @@ impl Repo {
             remote,
             name: repo_name,
         })
+    }
+
+    pub fn pull(repo: &Repository, branch_name: &str) -> anyhow::Result<()> {
+        let ssh_key_path = find_ssh_key()?;
+
+        let mut cb = RemoteCallbacks::new();
+
+        cb.credentials(|_, username_from_url, _| {
+            Cred::ssh_key(username_from_url.unwrap(), None, &ssh_key_path, None)
+        });
+
+        let mut fo = FetchOptions::new();
+        fo.remote_callbacks(cb);
+
+        let mut remote = repo.find_remote("origin")?;
+        remote.fetch(&[branch_name], Some(&mut fo), None)?;
+        Ok(())
+    }
+
+    pub fn switch_branch(ctx: &WatchContext, remote_branch: &str) -> anyhow::Result<()> {
+        Repo::switch_branch_inner(ctx, remote_branch, 0)
+    }
+
+    /// This function behaves like `git checkout`.
+    /// - First, it tries to switch to the branch locally.
+    /// - If the branch is not found locally, it looks for the corresponding remote branch (`origin/<branch>`).
+    /// - If the remote branch exists, it creates a new local branch tracking it and retries.
+    /// - If the remote branch does not exist, it fetches from `origin` and retries once more.
+    /// - If the branch still cannot be found after the allowed number of attempts, it returns an error.
+    fn switch_branch_inner(
+        ctx: &WatchContext,
+        remote_branch: &str,
+        attempt: u8,
+    ) -> anyhow::Result<()> {
+        const MAX_ATTEMPTS: u8 = 2;
+
+        if attempt > MAX_ATTEMPTS {
+            anyhow::bail!(
+                "Unable to find branch `{}` locally or remotely",
+                remote_branch
+            );
+        }
+
+        let repo = Repository::open(&ctx.project_dir)?;
+
+        let branch_name = remote_branch
+            .strip_prefix("origin/")
+            .unwrap_or(remote_branch);
+
+        if repo.head()?.shorthand().unwrap_or_default() == branch_name {
+            // already on the right branch
+            eprintln!("already on the good branch");
+            return Ok(());
+        }
+
+        let branch = repo.find_branch(branch_name, git2::BranchType::Local);
+        match branch {
+            Ok(b) => {
+                let branch_ref = b.get();
+                let commit = branch_ref.peel_to_commit()?;
+                repo.set_head(branch_ref.name().unwrap())?;
+                repo.checkout_tree(commit.as_object(), None)?;
+                Ok(())
+            }
+            Err(_) => {
+                match repo.find_branch(remote_branch, git2::BranchType::Remote) {
+                    Ok(remote_ref) => {
+                        // if remote exists
+                        let target_commit = remote_ref.get().peel_to_commit()?;
+                        repo.branch(branch_name, &target_commit, false)?;
+                        Repo::switch_branch_inner(ctx, remote_branch, attempt + 1)
+                    }
+                    Err(_) => {
+                        // if we dont find remote -> fetch and retry
+                        Repo::pull(&repo, branch_name)?;
+                        Repo::switch_branch_inner(ctx, remote_branch, attempt + 1)
+                    }
+                }
+            }
+        }
     }
 }
