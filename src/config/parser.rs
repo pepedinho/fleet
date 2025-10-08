@@ -1,5 +1,8 @@
 use std::{
-    collections::{HashMap, HashSet}, fs, io::{Read, Write}, path::Path
+    collections::{HashMap, HashSet},
+    fs,
+    io::{Read, Write},
+    path::Path,
 };
 
 use anyhow::{Context, Ok, Result};
@@ -75,32 +78,34 @@ pub fn load_config(path: &Path) -> Result<ProjectConfig> {
         serde_yaml::from_str(&content).with_context(|| "Error parsing YAML configuration file")?;
 
     // resolve secret env variable for each job
-    for (_name, job) in config.pipeline.jobs.iter_mut() {
-
+    for (_job_name, job) in config.pipeline.jobs.iter_mut() {
         let env_map = job.env.as_mut();
-        if env_map.is_some() {
+        if env_map.is_none() {
+            continue;
+        }
 
-            for (name, value) in env_map.unwrap().iter_mut() {
-                if value.starts_with("$") == false { continue; }
+        for (name, value) in env_map.unwrap().iter_mut() {
+            if value.starts_with("$") == false {
+                continue;
+            }
 
-                let env_key = &value[1..];
+            let env_key = &value[1..];
 
-                let env_value = if env_key.is_empty() {
-                    std::env::var(name)
-                } else {
-                    std::env::var(env_key)
-                };
+            let env_value = if env_key.is_empty() {
+                std::env::var(name)
+            } else {
+                std::env::var(env_key)
+            };
 
-                if env_value.is_ok() {
-                    *value = env_value.unwrap();
-                    continue;
-                }
+            if env_value.is_ok() {
+                *value = env_value.unwrap();
+                continue;
+            }
 
-                if missing_env_validation(env_key)? == true {
-                    *value = String::from("");
-                } else {
-                    return Err(env_value.err().unwrap().into());
-                }
+            if missing_env_validation(env_key)? == true {
+                *value = String::from("");
+            } else {
+                return Err(env_value.err().unwrap().into());
             }
         }
     }
@@ -113,7 +118,6 @@ pub fn load_config(path: &Path) -> Result<ProjectConfig> {
 }
 
 fn missing_env_validation(env_key: &str) -> Result<bool> {
-
     eprintln!("Warning: Environment variable \"{env_key}\" is not set");
     eprint!("Continue anyway ? [y/N]");
     std::io::stdout().flush()?;
