@@ -17,6 +17,7 @@ fn build_repo() -> Repo {
                 ..Default::default()
             }],
             last_commit: "abc".to_string(),
+            last_name: "main".to_string(),
         },
         name: "name".to_string(),
         remote: "git://github.com/pepedinho/fleet.git".to_string(),

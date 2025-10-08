@@ -119,7 +119,6 @@ pub fn watch_once(repo: &mut Repo) -> Result<Option<String>, anyhow::Error> {
         })?;
 
         let first_new = res.into_iter().flatten().next();
-        println!(" debug : first new : {:#?}", first_new);
         Ok(first_new)
     }
     #[cfg(feature = "force_commit")]

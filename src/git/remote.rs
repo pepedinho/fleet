@@ -67,10 +67,8 @@ pub fn get_remote_branch_hash(url: &str, branch: &str) -> Result<String, Error> 
         branch
     };
 
-    println!("debug: branch in remote fn : {branch_name}");
     for r in refs {
         let name = r.name();
-        println!("debug: r.name() : {name}");
         if name.ends_with(branch_name) {
             return Ok(r.oid().to_string());
         }

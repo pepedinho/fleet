@@ -9,6 +9,7 @@ use tokio::{
 
 use crate::{
     core::{
+        id::format_commit,
         state::AppState,
         watcher::{WatchContext, watch_once},
     },
@@ -59,10 +60,17 @@ async fn collect_updates(state: &Arc<AppState>) -> Vec<(String, String)> {
         }
 
         // TODO: take Branch in arg for watch_once() branch has to be stored in ctx.config.branches
-        println!("yes");
         match watch_once(&mut ctx.repo) {
             Ok(Some(new_commit)) => {
                 println!("[{id}] ✔ OK");
+                ctx.logger
+                    .info(&format!(
+                        "New commit [{}] from branch {}",
+                        format_commit(&ctx.repo.branches.last_commit),
+                        ctx.repo.branches.last_name
+                    ))
+                    .await
+                    .ok(); // ignore log fail
                 to_update.push((id.clone(), new_commit));
             }
             Ok(None) => {}

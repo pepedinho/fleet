@@ -30,5 +30,6 @@ pipeline:
         
     deploy:
       needs: [test_rust]
+      env: *default_env
       steps:
         - cmd: echo je suis arriver a la fin
