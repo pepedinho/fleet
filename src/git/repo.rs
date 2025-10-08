@@ -19,8 +19,9 @@ pub struct Branch {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Branches {
     pub branches: Vec<Branch>,
-    pub last_commit: String, // the last commit who triggered a pipeline
-    pub name: String,        // the last name of the branch who triggered a pipeline
+    pub last_commit: String, // the last commit who triggered a pipeline (used for log)
+    pub last_name: String,   // the last name of the branch who triggered a pipeline
+    pub name: String, // the name of the last branch in branches: Vec<Branch> (used for ps command)
 }
 
 impl Branches {
@@ -30,6 +31,19 @@ impl Branches {
         } else {
             anyhow::bail!("failed to recover branch");
         }
+    }
+
+    pub fn last(&self) -> anyhow::Result<&Branch> {
+        if let Some(last) = self.branches.last() {
+            Ok(last)
+        } else {
+            anyhow::bail!("failed to recover branch");
+        }
+    }
+
+    pub fn default_last_commit(&self) -> anyhow::Result<String> {
+        let last = self.last()?;
+        Ok(last.last_commit.clone())
     }
 
     pub fn try_for_each<F, T>(&mut self, mut f: F) -> anyhow::Result<Vec<T>>
@@ -52,6 +66,7 @@ impl From<Vec<Branch>> for Branches {
             branches,
             last_commit: String::default(),
             name: String::default(),
+            last_name: String::default(),
         }
     }
 }
@@ -62,6 +77,7 @@ impl From<Branch> for Branches {
             branches: vec![branch],
             last_commit: String::default(),
             name: String::default(),
+            last_name: String::default(),
         }
     }
 }

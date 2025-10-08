@@ -46,16 +46,24 @@ fn build_add_watch_request() -> Result<DaemonRequest> {
     let config = load_config(config_path)?;
 
     let (branches, b_name) = if config.branches[0] == "*" {
-        (branch_wildcard()?, "*".to_string())
+        (branch_wildcard()?, "*".to_string()) // if is wildcard branch we use '*' as branch name
     } else {
-        (config.branches.clone(), config.branches[0].clone())
+        // else if is one or more branch we use the last branch name
+        // e.g: ["main", "test", "abc"] -> b_name will be "abc"
+        (
+            config.branches.clone(),
+            config
+                .branches
+                .last()
+                .unwrap_or(&config.branches[0])
+                .clone(),
+        )
     };
-
-    println!("debug: branches: {:#?}", branches);
 
     let mut repo = Repo::build(branches.clone())?;
 
-    repo.branches.name = b_name;
+    repo.branches.name = b_name; //  asigne default name
+    repo.branches.last_commit = repo.branches.default_last_commit()?;
     println!("debug: repo branches: {:#?}", repo.branches);
 
     Ok(DaemonRequest::AddWatch {
