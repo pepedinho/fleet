@@ -55,7 +55,7 @@ fn build_add_watch_request() -> Result<DaemonRequest> {
             config
                 .branches
                 .last()
-                .unwrap_or(&config.branches[0])
+                .ok_or_else(|| anyhow::anyhow!("No branch defined in fleet.yml"))?
                 .clone(),
         )
     };
