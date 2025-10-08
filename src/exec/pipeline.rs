@@ -168,7 +168,11 @@ async fn handle_job_failure(
     let mut m = metrics.lock().await;
     m.job_finished(job_name, false);
 
-    let need_notif_on_failure = ctx.config.pipeline.notifications.as_ref()
+    let need_notif_on_failure = ctx
+        .config
+        .pipeline
+        .notifications
+        .as_ref()
         .map(|notif| notif.on.contains(&"failure".to_string()))
         .unwrap_or(false);
 
@@ -230,7 +234,11 @@ async fn finalize_pipeline(
     m.finalize();
     m.save().await?;
 
-    let need_notif_on_success = ctx.config.pipeline.notifications.as_ref()
+    let need_notif_on_success = ctx
+        .config
+        .pipeline
+        .notifications
+        .as_ref()
         .map(|notif| notif.on.contains(&"success".to_string()))
         .unwrap_or(false);
 
