@@ -3,74 +3,89 @@
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>anyhow::{<span class="prelude-val">Ok</span>, <span class="prelude-ty">Result</span>};
 <a href=#4 id=4 data-nosnippet>4</a>
 <a href=#5 id=5 data-nosnippet>5</a><span class="kw">use crate</span>::{
-<a href=#6 id=6 data-nosnippet>6</a>    cli::stats::interface::display_stats_interface,
-<a href=#7 id=7 data-nosnippet>7</a>    cli::{Cli, Commands, client::send_watch_request},
-<a href=#8 id=8 data-nosnippet>8</a>    config::parser::load_config,
-<a href=#9 id=9 data-nosnippet>9</a>    daemon::server::DaemonRequest,
-<a href=#10 id=10 data-nosnippet>10</a>    git::repo::Repo,
-<a href=#11 id=11 data-nosnippet>11</a>};
-<a href=#12 id=12 data-nosnippet>12</a>
-<a href=#13 id=13 data-nosnippet>13</a><span class="doccomment">/// Handles watch-related CLI commands by delegating to subfunctions
-<a href=#14 id=14 data-nosnippet>14</a>/// that build the appropriate [`DaemonRequest`].
-<a href=#15 id=15 data-nosnippet>15</a></span><span class="kw">pub async fn </span>handle_watch(cli: <span class="kw-2">&amp;</span>Cli) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-<a href=#16 id=16 data-nosnippet>16</a>    <span class="kw">let </span>watch_req = build_watch_request(cli).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#17 id=17 data-nosnippet>17</a>    send_watch_request(watch_req).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#18 id=18 data-nosnippet>18</a>    <span class="prelude-val">Ok</span>(())
-<a href=#19 id=19 data-nosnippet>19</a>}
-<a href=#20 id=20 data-nosnippet>20</a>
-<a href=#21 id=21 data-nosnippet>21</a><span class="doccomment">/// Builds the appropriate [`DaemonRequest`] for the given CLI command.
-<a href=#22 id=22 data-nosnippet>22</a></span><span class="kw">pub async fn </span>build_watch_request(cli: <span class="kw-2">&amp;</span>Cli) -&gt; <span class="prelude-ty">Result</span>&lt;DaemonRequest&gt; {
-<a href=#23 id=23 data-nosnippet>23</a>    <span class="kw">match </span><span class="kw-2">&amp;</span>cli.command {
-<a href=#24 id=24 data-nosnippet>24</a>        Commands::Watch { branch } =&gt; build_add_watch_request(branch.clone()),
-<a href=#25 id=25 data-nosnippet>25</a>        Commands::Ps { all } =&gt; <span class="prelude-val">Ok</span>(DaemonRequest::ListWatches { all: <span class="kw-2">*</span>all }),
-<a href=#26 id=26 data-nosnippet>26</a>        Commands::Logs { id_or_name, follow } =&gt; build_logs_request(id_or_name, <span class="kw-2">*</span>follow),
-<a href=#27 id=27 data-nosnippet>27</a>        Commands::Stop { id } =&gt; <span class="prelude-val">Ok</span>(DaemonRequest::StopWatch { id: id.to_string() }),
-<a href=#28 id=28 data-nosnippet>28</a>        Commands::Up { id } =&gt; <span class="prelude-val">Ok</span>(DaemonRequest::UpWatch { id: id.to_string() }),
-<a href=#29 id=29 data-nosnippet>29</a>        Commands::Rm { id } =&gt; <span class="prelude-val">Ok</span>(DaemonRequest::RmWatch { id: id.to_string() }),
-<a href=#30 id=30 data-nosnippet>30</a>        Commands::Stats =&gt; {
-<a href=#31 id=31 data-nosnippet>31</a>            display_stats_interface().<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#32 id=32 data-nosnippet>32</a>            <span class="prelude-val">Ok</span>(DaemonRequest::None)
-<a href=#33 id=33 data-nosnippet>33</a>        }
-<a href=#34 id=34 data-nosnippet>34</a>        Commands::Run { id } =&gt; <span class="prelude-val">Ok</span>(DaemonRequest::RunPipeline { id: id.clone() }),
-<a href=#35 id=35 data-nosnippet>35</a>    }
-<a href=#36 id=36 data-nosnippet>36</a>}
-<a href=#37 id=37 data-nosnippet>37</a>
-<a href=#38 id=38 data-nosnippet>38</a><span class="doccomment">/// Builds an [`AddWatch`] request after validating configuration.
-<a href=#39 id=39 data-nosnippet>39</a></span><span class="kw">fn </span>build_add_watch_request(branch_cli: <span class="prelude-ty">Option</span>&lt;String&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;DaemonRequest&gt; {
-<a href=#40 id=40 data-nosnippet>40</a>    <span class="kw">let </span>config_path = Path::new(<span class="string">"./fleet.yml"</span>);
-<a href=#41 id=41 data-nosnippet>41</a>    <span class="kw">if </span>!config_path.exists() {
-<a href=#42 id=42 data-nosnippet>42</a>        <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow::anyhow!</span>(
-<a href=#43 id=43 data-nosnippet>43</a>            <span class="string">"File `fleet.yml` missing from current directory."
-<a href=#44 id=44 data-nosnippet>44</a>        </span>));
-<a href=#45 id=45 data-nosnippet>45</a>    }
-<a href=#46 id=46 data-nosnippet>46</a>
-<a href=#47 id=47 data-nosnippet>47</a>    <span class="kw">let </span>config = load_config(config_path)<span class="question-mark">?</span>;
-<a href=#48 id=48 data-nosnippet>48</a>    <span class="kw">let </span>branch = branch_cli
-<a href=#49 id=49 data-nosnippet>49</a>        .or(config.branch.clone())
-<a href=#50 id=50 data-nosnippet>50</a>        .unwrap_or(Repo::build(<span class="prelude-val">None</span>)<span class="question-mark">?</span>.branch.clone());
-<a href=#51 id=51 data-nosnippet>51</a>    <span class="kw">let </span>repo = Repo::build(<span class="prelude-val">Some</span>(branch.clone()))<span class="question-mark">?</span>;
-<a href=#52 id=52 data-nosnippet>52</a>
-<a href=#53 id=53 data-nosnippet>53</a>    <span class="prelude-val">Ok</span>(DaemonRequest::AddWatch {
-<a href=#54 id=54 data-nosnippet>54</a>        project_dir: std::env::current_dir()<span class="question-mark">?</span>.to_string_lossy().into_owned(),
-<a href=#55 id=55 data-nosnippet>55</a>        branch,
-<a href=#56 id=56 data-nosnippet>56</a>        repo: Box::new(repo),
-<a href=#57 id=57 data-nosnippet>57</a>        config: Box::new(config),
-<a href=#58 id=58 data-nosnippet>58</a>    })
-<a href=#59 id=59 data-nosnippet>59</a>}
-<a href=#60 id=60 data-nosnippet>60</a>
-<a href=#61 id=61 data-nosnippet>61</a><span class="doccomment">/// Builds a [`LogsWatches`] request from CLI or repository defaults.
-<a href=#62 id=62 data-nosnippet>62</a></span><span class="kw">fn </span>build_logs_request(id_or_name: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;String&gt;, follow: bool) -&gt; <span class="prelude-ty">Result</span>&lt;DaemonRequest&gt; {
-<a href=#63 id=63 data-nosnippet>63</a>    <span class="kw">match </span>id_or_name {
-<a href=#64 id=64 data-nosnippet>64</a>        <span class="prelude-val">Some</span>(s) =&gt; <span class="prelude-val">Ok</span>(DaemonRequest::LogsWatches {
-<a href=#65 id=65 data-nosnippet>65</a>            id: s.to_string(),
-<a href=#66 id=66 data-nosnippet>66</a>            f: follow,
-<a href=#67 id=67 data-nosnippet>67</a>        }),
-<a href=#68 id=68 data-nosnippet>68</a>        <span class="prelude-val">None </span>=&gt; {
-<a href=#69 id=69 data-nosnippet>69</a>            <span class="kw">let </span>repo = Repo::build(<span class="prelude-val">None</span>)<span class="question-mark">?</span>;
-<a href=#70 id=70 data-nosnippet>70</a>            <span class="prelude-val">Ok</span>(DaemonRequest::LogsWatches {
-<a href=#71 id=71 data-nosnippet>71</a>                id: repo.name,
-<a href=#72 id=72 data-nosnippet>72</a>                f: follow,
-<a href=#73 id=73 data-nosnippet>73</a>            })
-<a href=#74 id=74 data-nosnippet>74</a>        }
-<a href=#75 id=75 data-nosnippet>75</a>    }
-<a href=#76 id=76 data-nosnippet>76</a>}</code></pre></div></section></main></body></html>
+<a href=#6 id=6 data-nosnippet>6</a>    cli::{Cli, Commands, client::send_watch_request, stats::interface::display_stats_interface},
+<a href=#7 id=7 data-nosnippet>7</a>    config::parser::load_config,
+<a href=#8 id=8 data-nosnippet>8</a>    daemon::server::DaemonRequest,
+<a href=#9 id=9 data-nosnippet>9</a>    git::{remote::branch_wildcard, repo::Repo},
+<a href=#10 id=10 data-nosnippet>10</a>};
+<a href=#11 id=11 data-nosnippet>11</a>
+<a href=#12 id=12 data-nosnippet>12</a><span class="doccomment">/// Handles watch-related CLI commands by delegating to subfunctions
+<a href=#13 id=13 data-nosnippet>13</a>/// that build the appropriate [`DaemonRequest`].
+<a href=#14 id=14 data-nosnippet>14</a></span><span class="kw">pub async fn </span>handle_watch(cli: <span class="kw-2">&amp;</span>Cli) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+<a href=#15 id=15 data-nosnippet>15</a>    <span class="kw">let </span>watch_req = build_watch_request(cli).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#16 id=16 data-nosnippet>16</a>    send_watch_request(watch_req).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#17 id=17 data-nosnippet>17</a>    <span class="prelude-val">Ok</span>(())
+<a href=#18 id=18 data-nosnippet>18</a>}
+<a href=#19 id=19 data-nosnippet>19</a>
+<a href=#20 id=20 data-nosnippet>20</a><span class="doccomment">/// Builds the appropriate [`DaemonRequest`] for the given CLI command.
+<a href=#21 id=21 data-nosnippet>21</a></span><span class="kw">pub async fn </span>build_watch_request(cli: <span class="kw-2">&amp;</span>Cli) -&gt; <span class="prelude-ty">Result</span>&lt;DaemonRequest&gt; {
+<a href=#22 id=22 data-nosnippet>22</a>    <span class="kw">match </span><span class="kw-2">&amp;</span>cli.command {
+<a href=#23 id=23 data-nosnippet>23</a>        Commands::Watch =&gt; build_add_watch_request(),
+<a href=#24 id=24 data-nosnippet>24</a>        Commands::Ps { all } =&gt; <span class="prelude-val">Ok</span>(DaemonRequest::ListWatches { all: <span class="kw-2">*</span>all }),
+<a href=#25 id=25 data-nosnippet>25</a>        Commands::Logs { id_or_name, follow } =&gt; build_logs_request(id_or_name, <span class="kw-2">*</span>follow),
+<a href=#26 id=26 data-nosnippet>26</a>        Commands::Stop { id } =&gt; <span class="prelude-val">Ok</span>(DaemonRequest::StopWatch { id: id.to_string() }),
+<a href=#27 id=27 data-nosnippet>27</a>        Commands::Up { id } =&gt; <span class="prelude-val">Ok</span>(DaemonRequest::UpWatch { id: id.to_string() }),
+<a href=#28 id=28 data-nosnippet>28</a>        Commands::Rm { id } =&gt; <span class="prelude-val">Ok</span>(DaemonRequest::RmWatch { id: id.to_string() }),
+<a href=#29 id=29 data-nosnippet>29</a>        Commands::Stats =&gt; {
+<a href=#30 id=30 data-nosnippet>30</a>            display_stats_interface().<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#31 id=31 data-nosnippet>31</a>            <span class="prelude-val">Ok</span>(DaemonRequest::None)
+<a href=#32 id=32 data-nosnippet>32</a>        }
+<a href=#33 id=33 data-nosnippet>33</a>        Commands::Run { id } =&gt; <span class="prelude-val">Ok</span>(DaemonRequest::RunPipeline { id: id.clone() }),
+<a href=#34 id=34 data-nosnippet>34</a>    }
+<a href=#35 id=35 data-nosnippet>35</a>}
+<a href=#36 id=36 data-nosnippet>36</a>
+<a href=#37 id=37 data-nosnippet>37</a><span class="doccomment">/// Builds an [`AddWatch`] request after validating configuration.
+<a href=#38 id=38 data-nosnippet>38</a></span><span class="kw">fn </span>build_add_watch_request() -&gt; <span class="prelude-ty">Result</span>&lt;DaemonRequest&gt; {
+<a href=#39 id=39 data-nosnippet>39</a>    <span class="kw">let </span>config_path = Path::new(<span class="string">"./fleet.yml"</span>);
+<a href=#40 id=40 data-nosnippet>40</a>    <span class="kw">if </span>!config_path.exists() {
+<a href=#41 id=41 data-nosnippet>41</a>        <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow::anyhow!</span>(
+<a href=#42 id=42 data-nosnippet>42</a>            <span class="string">"File `fleet.yml` missing from current directory."
+<a href=#43 id=43 data-nosnippet>43</a>        </span>));
+<a href=#44 id=44 data-nosnippet>44</a>    }
+<a href=#45 id=45 data-nosnippet>45</a>
+<a href=#46 id=46 data-nosnippet>46</a>    <span class="kw">let </span>config = load_config(config_path)<span class="question-mark">?</span>;
+<a href=#47 id=47 data-nosnippet>47</a>
+<a href=#48 id=48 data-nosnippet>48</a>    <span class="kw">let </span>(branches, b_name) = <span class="kw">if </span>config.branches[<span class="number">0</span>] == <span class="string">"*" </span>{
+<a href=#49 id=49 data-nosnippet>49</a>        (branch_wildcard()<span class="question-mark">?</span>, <span class="string">"*"</span>.to_string()) <span class="comment">// if is wildcard branch we use '*' as branch name
+<a href=#50 id=50 data-nosnippet>50</a>    </span>} <span class="kw">else </span>{
+<a href=#51 id=51 data-nosnippet>51</a>        <span class="comment">// else if is one or more branch we use the last branch name
+<a href=#52 id=52 data-nosnippet>52</a>        // e.g: ["main", "test", "abc"] -&gt; b_name will be "abc"
+<a href=#53 id=53 data-nosnippet>53</a>        </span>(
+<a href=#54 id=54 data-nosnippet>54</a>            config.branches.clone(),
+<a href=#55 id=55 data-nosnippet>55</a>            config
+<a href=#56 id=56 data-nosnippet>56</a>                .branches
+<a href=#57 id=57 data-nosnippet>57</a>                .last()
+<a href=#58 id=58 data-nosnippet>58</a>                .ok_or_else(|| <span class="macro">anyhow::anyhow!</span>(<span class="string">"No branch defined in fleet.yml"</span>))<span class="question-mark">?
+<a href=#59 id=59 data-nosnippet>59</a>                </span>.clone(),
+<a href=#60 id=60 data-nosnippet>60</a>        )
+<a href=#61 id=61 data-nosnippet>61</a>    };
+<a href=#62 id=62 data-nosnippet>62</a>
+<a href=#63 id=63 data-nosnippet>63</a>    <span class="kw">let </span><span class="kw-2">mut </span>repo = Repo::build(branches.clone())<span class="question-mark">?</span>;
+<a href=#64 id=64 data-nosnippet>64</a>
+<a href=#65 id=65 data-nosnippet>65</a>    repo.branches.name = b_name; <span class="comment">//  asigne default name
+<a href=#66 id=66 data-nosnippet>66</a>    </span>repo.branches.last_commit = repo.branches.default_last_commit()<span class="question-mark">?</span>;
+<a href=#67 id=67 data-nosnippet>67</a>    <span class="macro">println!</span>(<span class="string">"debug: repo branches: {:#?}"</span>, repo.branches);
+<a href=#68 id=68 data-nosnippet>68</a>
+<a href=#69 id=69 data-nosnippet>69</a>    <span class="prelude-val">Ok</span>(DaemonRequest::AddWatch {
+<a href=#70 id=70 data-nosnippet>70</a>        project_dir: std::env::current_dir()<span class="question-mark">?</span>.to_string_lossy().into_owned(),
+<a href=#71 id=71 data-nosnippet>71</a>        repo: Box::new(repo),
+<a href=#72 id=72 data-nosnippet>72</a>        config: Box::new(config),
+<a href=#73 id=73 data-nosnippet>73</a>    })
+<a href=#74 id=74 data-nosnippet>74</a>}
+<a href=#75 id=75 data-nosnippet>75</a>
+<a href=#76 id=76 data-nosnippet>76</a><span class="doccomment">/// Builds a [`LogsWatches`] request from CLI or repository defaults.
+<a href=#77 id=77 data-nosnippet>77</a></span><span class="kw">fn </span>build_logs_request(id_or_name: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;String&gt;, follow: bool) -&gt; <span class="prelude-ty">Result</span>&lt;DaemonRequest&gt; {
+<a href=#78 id=78 data-nosnippet>78</a>    <span class="kw">match </span>id_or_name {
+<a href=#79 id=79 data-nosnippet>79</a>        <span class="prelude-val">Some</span>(s) =&gt; <span class="prelude-val">Ok</span>(DaemonRequest::LogsWatches {
+<a href=#80 id=80 data-nosnippet>80</a>            id: s.to_string(),
+<a href=#81 id=81 data-nosnippet>81</a>            f: follow,
+<a href=#82 id=82 data-nosnippet>82</a>        }),
+<a href=#83 id=83 data-nosnippet>83</a>        <span class="prelude-val">None </span>=&gt; {
+<a href=#84 id=84 data-nosnippet>84</a>            <span class="kw">let </span>repo = Repo::default_build()<span class="question-mark">?</span>;
+<a href=#85 id=85 data-nosnippet>85</a>            <span class="prelude-val">Ok</span>(DaemonRequest::LogsWatches {
+<a href=#86 id=86 data-nosnippet>86</a>                id: repo.name,
+<a href=#87 id=87 data-nosnippet>87</a>                f: follow,
+<a href=#88 id=88 data-nosnippet>88</a>            })
+<a href=#89 id=89 data-nosnippet>89</a>        }
+<a href=#90 id=90 data-nosnippet>90</a>    }
+<a href=#91 id=91 data-nosnippet>91</a>}</code></pre></div></section></main></body></html>

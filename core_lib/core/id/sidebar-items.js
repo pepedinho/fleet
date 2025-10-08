@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["short_id"]};
+window.SIDEBAR_ITEMS = {"fn":["format_commit","short_id"]};

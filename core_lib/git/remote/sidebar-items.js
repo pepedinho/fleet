@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["get_remote_branch_hash"]};
+window.SIDEBAR_ITEMS = {"fn":["branch_wildcard","branch_wildcard_from_repo","find_ssh_key","get_remote_branch_hash"]};
