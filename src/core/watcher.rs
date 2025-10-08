@@ -107,11 +107,13 @@ impl WatchContext {
 pub fn watch_once(repo: &mut Repo) -> Result<Option<String>, anyhow::Error> {
     #[cfg(not(feature = "force_commit"))]
     {
+        let mut name = String::new();
         let res = repo.branches.try_for_each(|b| {
             let remote_hash = get_remote_branch_hash(&b.remote, &b.branch)?;
 
             if remote_hash != b.last_commit {
                 b.last_commit = remote_hash.clone();
+                name = b.branch.clone();
                 println!("new commit detected: {} -> {}", b.last_commit, remote_hash);
                 return Ok(Some(remote_hash));
             }
@@ -119,6 +121,10 @@ pub fn watch_once(repo: &mut Repo) -> Result<Option<String>, anyhow::Error> {
         })?;
 
         let first_new = res.into_iter().flatten().next();
+        if let Some(commit) = &first_new {
+            repo.branches.last_commit = commit.clone();
+            repo.branches.last_name = name;
+        }
         Ok(first_new)
     }
     #[cfg(feature = "force_commit")]

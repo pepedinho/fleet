@@ -10,10 +10,11 @@ pub struct Repo {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 pub struct Branch {
-    pub branch: String,
-    pub last_commit: String,
-    pub remote: String,
-    pub name: String,
+    pub branch: String,      // the name of this branch
+    pub last_commit: String, // last commit of this branch
+    pub remote: String,      // remote url of the repo
+    pub name: String,        // name of the repo
+                             // (do not use if you want to retrieve the branch name, use .branch instead)
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
