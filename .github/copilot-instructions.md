@@ -66,7 +66,7 @@ When generating a Pull Request description, provide a clear, developer-oriented 
 
 ## Example PR Description Template
 
-```markdown
+````markdown
 ## Title
 <Write a one-line summary of the PR>
 
@@ -103,4 +103,4 @@ When generating a Pull Request description, provide a clear, developer-oriented 
 
 ## Notes
 <Any additional notes about migrations, dependencies, compatibility issues, etc.>
-```
+````
