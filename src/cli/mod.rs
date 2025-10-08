@@ -18,11 +18,7 @@ pub enum Commands {
     Run {
         id: String,
     },
-    Watch {
-        #[arg(short = 'b', long, default_value = None)]
-        branch: Option<String>,
-    },
-
+    Watch,
     Ps {
         #[arg(short = 'a', long)]
         all: bool,
