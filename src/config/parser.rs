@@ -1,7 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     fs,
-    io::{Read, Write},
+    io::Write,
     path::Path,
 };
 
@@ -77,7 +77,7 @@ pub fn load_config(path: &Path) -> Result<ProjectConfig> {
     let mut config: ProjectConfig =
         serde_yaml::from_str(&content).with_context(|| "Error parsing YAML configuration file")?;
 
-    let mut missing_variables_skipped: HashSet<&str> = HashSet::new();
+    let mut skipped_missing_variables = HashSet::new();
 
     // resolve secret env variable for each job
     for (job_name, job) in config.pipeline.jobs.iter_mut() {
@@ -91,44 +91,37 @@ pub fn load_config(path: &Path) -> Result<ProjectConfig> {
                 continue;
             }
 
-            let extraction_result = extract_env_value(&value[1..], name);
+            let env_key = if !&value[1..].is_empty() {
+                &value[1..]
+            } else {
+                name
+            };
+
+            let extraction_result = std::env::var(env_key);
             if let Ok(env_value) = extraction_result {
                 *value = env_value;
                 continue;
             }
 
-            // env variable not found
-            let env_key = &value[1..];
-            eprintln!(r#"WARNING: "${env_key}" not found for job {job_name}"#);
+            eprintln!(r#"WARNING: "${}" not found for job "{job_name}""#, env_key);
 
-            if missing_variables_skipped.contains(env_key) {
+            if skipped_missing_variables.contains(env_key) {
+                *value = "".to_string();
                 continue;
-            }
-
-            if ask_continue_anyway()? {
-                missing_variables_skipped.insert(env_key);
+            } else if ask_continue_anyway()? {
+                skipped_missing_variables.insert(env_key.to_string());
+                *value = "".to_string();
                 continue;
             } else {
-                return Err(extraction_result.unwrap_err())
+                return Err(extraction_result.unwrap_err().into());
             }
         }
     }
 
+    // dbg!(&config);
     check_dependency_graph(&config)?;
 
-    // dbg!(&config);
-
     Ok(config)
-}
-
-fn extract_env_value(env_key: &str, default_env_name: &str) -> Result<String> {
-    let env_value = if env_key.is_empty() {
-        std::env::var(default_env_name)?
-    } else {
-        std::env::var(env_key)?
-    };
-
-    return Ok(env_value);
 }
 
 fn ask_continue_anyway() -> Result<bool> {
@@ -136,15 +129,14 @@ fn ask_continue_anyway() -> Result<bool> {
         eprint!("Continue anyway ? [y/N] ");
         std::io::stdout().flush()?;
 
-        let mut buffer = [0_u8; 1];
-        std::io::stdin().read_exact(&mut buffer)?;
-        eprintln!();
+        let mut buffer = String::new();
+        std::io::stdin().read_line(&mut buffer)?;
 
-        let input = buffer[0] as char;
+        let input = buffer.chars().next();
 
         match input {
-            'y' | 'Y' => return Ok(true),
-            'n' | 'N' => return Ok(false),
+            Some('y' | 'Y') => return Ok(true),
+            Some('n' | 'N') => return Ok(false),
 
             _ => {
                 eprintln!("Invalid input, please retry.");
