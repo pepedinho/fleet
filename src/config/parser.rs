@@ -71,7 +71,7 @@ pub fn check_dependency_graph(config: &ProjectConfig) -> Result<()> {
 }
 
 pub fn load_config(path: &Path) -> Result<ProjectConfig> {
-    let content =
+    let content: String =
         fs::read_to_string(path).with_context(|| format!("Error reading config file {path:?}"))?;
 
     let mut config: ProjectConfig =

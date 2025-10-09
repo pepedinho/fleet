@@ -10,8 +10,7 @@ use crate::{
         watcher::{WatchContext, WatchContextBuilder},
     },
     daemon::utiles::extract_repo_path,
-    exec::metrics::ExecMetrics,
-    exec::pipeline::run_pipeline,
+    exec::{metrics::ExecMetrics, pipeline::run_pipeline},
     git::repo::Repo,
     log::logger::Logger,
 };
@@ -29,7 +28,6 @@ pub enum DaemonRequest {
     #[serde(rename = "add_watch")]
     AddWatch {
         project_dir: String,
-        branch: String,
         // use Box (clippy)
         repo: Box<Repo>,
         config: Box<ProjectConfig>,
@@ -124,10 +122,9 @@ pub async fn handle_request(
     let response = match req {
         DaemonRequest::AddWatch {
             project_dir,
-            branch,
             repo,
             config,
-        } => handle_add_watch(state, project_dir, branch, *repo, *config).await?,
+        } => handle_add_watch(state, project_dir, *repo, *config).await?,
 
         DaemonRequest::StopWatch { id } => handle_stop_watch(state, id).await,
 
@@ -180,24 +177,18 @@ async fn handle_run_pipeline(
 async fn handle_add_watch(
     state: Arc<AppState>,
     project_dir: String,
-    branch: String,
-    mut repo: Repo,
+    repo: Repo,
     config: ProjectConfig,
 ) -> anyhow::Result<DaemonResponse> {
     let mut guard = state.watches.write().await;
     let existing_id = guard
         .iter()
         .find(|(_, ctx)| ctx.project_dir == project_dir)
-        .map(|(id, ctx)| {
-            if ctx.repo.branch != branch {
-                repo.last_commit = ctx.repo.last_commit.clone();
-            }
-            id.clone()
-        });
+        .map(|(id, _ctx)| id.clone());
 
     let id = existing_id.unwrap_or_else(short_id);
 
-    let ctx = WatchContextBuilder::new(branch, repo, config, project_dir, id.clone())
+    let ctx = WatchContextBuilder::new(repo, config, project_dir, id.clone())
         .build()
         .await?;
 
@@ -290,12 +281,18 @@ pub async fn handle_list_watches(state: Arc<AppState>, all: bool) -> DaemonRespo
             .iter()
             .filter(|(_, ctx)| all || !ctx.paused) // if all = true everything pass, else only if paused is false they can pass
             .map(|(id, ctx)| {
-                let short_commit = ctx.repo.last_commit.chars().take(8).collect::<String>();
+                let short_commit = ctx
+                    .repo
+                    .branches
+                    .last_commit
+                    .chars()
+                    .take(8)
+                    .collect::<String>();
                 let short_url = extract_repo_path(&ctx.repo.remote)?;
-                let short_branch = if ctx.branch.len() > 12 {
-                    format!("{}...", &ctx.branch[..9])
+                let short_branch = if ctx.repo.branches.name.len() > 12 {
+                    format!("{}...", &ctx.repo.branches.name[..9])
                 } else {
-                    ctx.branch.clone()
+                    ctx.repo.branches.name.clone()
                 };
                 Ok(WatchInfo {
                     branch: short_branch,
