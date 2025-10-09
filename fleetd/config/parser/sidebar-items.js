@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["check_dependency_graph","load_config"]};
+window.SIDEBAR_ITEMS = {"fn":["ask_continue_anyway","check_dependency_graph","load_config"]};
