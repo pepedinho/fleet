@@ -9,14 +9,13 @@ branches: ['*']
 timeout: 200
 
 pipeline:
-  # new field notifications
   notifications:
     on: [success, failure]
     thumbnail: https://github.com/user-attachments/assets/429bf6e8-5724-473e-a560-e9e06bbbc143
     channels:
       - service: discord
         url: https://discord.com/api/webhooks/1411403673028001989/WH1KIMmgxSNEF6kV_9-TQS1LadHASBLDJ5evPgMIo3Ko8NX40hcMom_InEo9YsNrRDmu
-  
+
   jobs:
     test_rust:
       env:
