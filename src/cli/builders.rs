@@ -3,11 +3,10 @@ use std::path::Path;
 use anyhow::{Ok, Result};
 
 use crate::{
-    cli::stats::interface::display_stats_interface,
-    cli::{Cli, Commands, client::send_watch_request},
+    cli::{Cli, Commands, client::send_watch_request, stats::interface::display_stats_interface},
     config::parser::load_config,
     daemon::server::DaemonRequest,
-    git::repo::Repo,
+    git::{remote::branch_wildcard, repo::Repo},
 };
 
 /// Handles watch-related CLI commands by delegating to subfunctions
@@ -21,7 +20,7 @@ pub async fn handle_watch(cli: &Cli) -> Result<()> {
 /// Builds the appropriate [`DaemonRequest`] for the given CLI command.
 pub async fn build_watch_request(cli: &Cli) -> Result<DaemonRequest> {
     match &cli.command {
-        Commands::Watch { branch } => build_add_watch_request(branch.clone()),
+        Commands::Watch => build_add_watch_request(),
         Commands::Ps { all } => Ok(DaemonRequest::ListWatches { all: *all }),
         Commands::Logs { id_or_name, follow } => build_logs_request(id_or_name, *follow),
         Commands::Stop { id } => Ok(DaemonRequest::StopWatch { id: id.to_string() }),
@@ -36,7 +35,7 @@ pub async fn build_watch_request(cli: &Cli) -> Result<DaemonRequest> {
 }
 
 /// Builds an [`AddWatch`] request after validating configuration.
-fn build_add_watch_request(branch_cli: Option<String>) -> Result<DaemonRequest> {
+fn build_add_watch_request() -> Result<DaemonRequest> {
     let config_path = Path::new("./fleet.yml");
     if !config_path.exists() {
         return Err(anyhow::anyhow!(
@@ -45,14 +44,30 @@ fn build_add_watch_request(branch_cli: Option<String>) -> Result<DaemonRequest> 
     }
 
     let config = load_config(config_path)?;
-    let branch = branch_cli
-        .or(config.branch.clone())
-        .unwrap_or(Repo::build(None)?.branch.clone());
-    let repo = Repo::build(Some(branch.clone()))?;
+
+    let (branches, b_name) = if config.branches[0] == "*" {
+        (branch_wildcard()?, "*".to_string()) // if is wildcard branch we use '*' as branch name
+    } else {
+        // else if is one or more branch we use the last branch name
+        // e.g: ["main", "test", "abc"] -> b_name will be "abc"
+        (
+            config.branches.clone(),
+            config
+                .branches
+                .last()
+                .ok_or_else(|| anyhow::anyhow!("No branch defined in fleet.yml"))?
+                .clone(),
+        )
+    };
+
+    let mut repo = Repo::build(branches.clone())?;
+
+    repo.branches.name = b_name; //  asigne default name
+    repo.branches.last_commit = repo.branches.default_last_commit()?;
+    println!("debug: repo branches: {:#?}", repo.branches);
 
     Ok(DaemonRequest::AddWatch {
         project_dir: std::env::current_dir()?.to_string_lossy().into_owned(),
-        branch,
         repo: Box::new(repo),
         config: Box::new(config),
     })
@@ -66,7 +81,7 @@ fn build_logs_request(id_or_name: &Option<String>, follow: bool) -> Result<Daemo
             f: follow,
         }),
         None => {
-            let repo = Repo::build(None)?;
+            let repo = Repo::default_build()?;
             Ok(DaemonRequest::LogsWatches {
                 id: repo.name,
                 f: follow,

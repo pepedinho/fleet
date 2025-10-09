@@ -9,11 +9,13 @@ use tokio::{
 
 use crate::{
     core::{
+        id::format_commit,
         state::AppState,
         watcher::{WatchContext, watch_once},
     },
     daemon::server::{DaemonRequest, handle_request},
     exec::pipeline::run_pipeline,
+    git::repo::Repo,
 };
 
 #[doc = include_str!("docs/supervisor_loop.md")]
@@ -26,8 +28,8 @@ pub async fn supervisor_loop(state: Arc<AppState>, interval_secs: u64) {
         let to_update = collect_updates(&state).await;
         let mut dirty = false;
 
-        for (id, new_commit) in to_update {
-            update_commit(&state, &id, new_commit.clone()).await;
+        for (id, _new_commit) in to_update {
+            // update_commit(&state, &id, new_commit.clone()).await;
             if let Some(ctx) = get_watch_ctx(&state, &id).await {
                 match run_pipeline(Arc::new(ctx)).await {
                     Ok(_) => {
@@ -51,15 +53,27 @@ pub async fn supervisor_loop(state: Arc<AppState>, interval_secs: u64) {
 /// return the (id, new_commit) to update.
 async fn collect_updates(state: &Arc<AppState>) -> Vec<(String, String)> {
     let mut to_update = Vec::new();
-    let guard = state.watches.read().await;
+    let mut guard = state.watches.write().await;
 
-    for (id, ctx) in guard.iter() {
+    for (id, ctx) in guard.iter_mut() {
         if ctx.paused {
             continue;
         }
-        match watch_once(ctx).await {
+
+        // TODO: take Branch in arg for watch_once() branch has to be stored in ctx.config.branches
+        match watch_once(&mut ctx.repo) {
             Ok(Some(new_commit)) => {
                 println!("[{id}] ✔ OK");
+                ctx.logger
+                    .info(&format!(
+                        "New commit [{}] from branch {}",
+                        format_commit(&ctx.repo.branches.last_commit),
+                        ctx.repo.branches.last_name
+                    ))
+                    .await
+                    .ok(); // ignore log fail
+                //for the moment i ignore the error but in the futur i have to handle it correctly
+                Repo::switch_branch(ctx, &ctx.repo.branches.last_name).ok();
                 to_update.push((id.clone(), new_commit));
             }
             Ok(None) => {}
@@ -71,11 +85,12 @@ async fn collect_updates(state: &Arc<AppState>) -> Vec<(String, String)> {
 }
 
 /// Updates the commit stored in the state for a given watch.
-async fn update_commit(state: &Arc<AppState>, id: &str, new_commit: String) {
+async fn update_commit(state: &Arc<AppState>, id: &str, new_commit: String) -> anyhow::Result<()> {
     let mut watches_write = state.watches.write().await;
     if let Some(ctx) = watches_write.get_mut(id) {
-        ctx.repo.last_commit = new_commit;
+        ctx.repo.branches.last_mut()?.last_commit = new_commit;
     }
+    Ok(())
 }
 
 pub async fn get_watch_ctx(state: &Arc<AppState>, id: &str) -> Option<WatchContext> {
