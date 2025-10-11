@@ -24,6 +24,12 @@ const BG_GREEN: &str = "\x1b[42m"; // job start
 const BG_MAGENTA: &str = "\x1b[45m"; // job end 
 const FG_BOLD_WHITE: &str = "\x1b[97;1m";
 
+pub enum LogLevel {
+    Info,
+    Warning,
+    Error,
+}
+
 impl Logger {
     pub async fn new(path: &std::path::Path) -> anyhow::Result<Self> {
         let file = tokio::fs::OpenOptions::new()
@@ -117,10 +123,7 @@ impl Logger {
         }
     }
 
-    fn paint_level(&self, level: &str) -> String {
-        if !self.color_enable {
-            return level.to_string();
-        }
+    fn paint_level(level: &str) -> String {
         match level {
             "INFO" => format!("{BG_BLUE}{FG_BOLD_WHITE} {level} {RESET}"),
             "WARNING" => format!("{BG_ORANGE}{FG_BOLD_WHITE} {level} {RESET}"),
@@ -137,7 +140,7 @@ impl Logger {
         let line = format!(
             "[{}] {}: {}\n",
             now.format("%Y-%m-%d %H:%M:%S"),
-            self.paint_level(level),
+            Logger::paint_level(level),
             msg
         );
         f.write_all(line.as_bytes()).await?;
@@ -178,6 +181,31 @@ impl Logger {
             Err(anyhow::anyhow!("Failed to find log path"))
         } else {
             Ok(self.path.clone())
+        }
+    }
+
+    pub fn write(msg: &str, level: LogLevel) {
+        let now = Local::now();
+        let log = |s: &str| {
+            let line = format!(
+                "[{}] {}: {}\n",
+                now.format("%Y-%m-%d %H:%M:%S"),
+                Logger::paint_level(s),
+                msg
+            );
+            println!("{line}");
+        };
+
+        match level {
+            LogLevel::Info => {
+                log("INFO");
+            }
+            LogLevel::Warning => {
+                log("WARNING");
+            }
+            LogLevel::Error => {
+                log("ERROR");
+            }
         }
     }
 }
