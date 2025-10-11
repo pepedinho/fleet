@@ -24,6 +24,7 @@ pipeline:
         - cmd: cargo test --test cli_test -- --test-threads=1
 
     sleep_test:
+      env: *default_env
       steps:
         - cmd: sleep 5
         
