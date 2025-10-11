@@ -6,10 +6,9 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use atty::Stream;
 
 use crate::{
-    config::{Job, ProjectConfig},
+    config::{Job, ProjectConfig, stdin_is_tty},
     log::logger::{LogLevel, Logger},
 };
 
@@ -117,7 +116,7 @@ pub fn load_config(path: &Path) -> Result<ProjectConfig> {
                 continue;
             }
 
-            if atty::is(Stream::Stdin) {
+            if stdin_is_tty() {
                 if ask_continue_anyway()? {
                     skipped_missing_variables.insert(env_key.to_string());
                     *value = "".to_string();

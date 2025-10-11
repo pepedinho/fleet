@@ -113,3 +113,14 @@ impl ProjectConfig {
         })
     }
 }
+
+pub fn stdin_is_tty() -> bool {
+    #[cfg(feature = "no-tty")]
+    {
+        false
+    }
+    #[cfg(not(feature = "no-tty"))]
+    {
+        atty::is(atty::Stream::Stdin)
+    }
+}
