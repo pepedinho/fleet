@@ -7,7 +7,10 @@ use std::{
 
 use anyhow::{Context, Result};
 
-use crate::config::{Job, ProjectConfig};
+use crate::{
+    config::{Job, ProjectConfig, stdin_is_tty},
+    log::logger::{LogLevel, Logger},
+};
 
 pub fn check_dependency_graph(config: &ProjectConfig) -> Result<()> {
     let pipeline = &config.pipeline;
@@ -103,24 +106,34 @@ pub fn load_config(path: &Path) -> Result<ProjectConfig> {
                 continue;
             }
 
-            eprintln!(r#"WARNING: "${}" not found for job "{job_name}""#, env_key);
+            Logger::write(
+                &format!(r#""${}" not found for job "{job_name}""#, env_key),
+                LogLevel::Warning,
+            );
 
             if skipped_missing_variables.contains(env_key) {
                 *value = "".to_string();
                 continue;
-            } else if ask_continue_anyway()? {
-                skipped_missing_variables.insert(env_key.to_string());
-                *value = "".to_string();
-                continue;
+            }
+
+            if stdin_is_tty() {
+                if ask_continue_anyway()? {
+                    skipped_missing_variables.insert(env_key.to_string());
+                    *value = "".to_string();
+                    continue;
+                } else {
+                    return Err(extraction_result.unwrap_err().into());
+                }
             } else {
-                return Err(extraction_result.unwrap_err().into());
+                return Err(anyhow::anyhow!(
+                    "Missing env variable '{}' and no TTY to ask user",
+                    env_key
+                ));
             }
         }
     }
-
     // dbg!(&config);
     check_dependency_graph(&config)?;
-
     Ok(config)
 }
 
