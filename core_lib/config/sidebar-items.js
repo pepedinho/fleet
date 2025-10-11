@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["parser"],"struct":["Cmd","ConfChannel","Job","Notification","Pipeline","ProjectConfig"]};
+window.SIDEBAR_ITEMS = {"fn":["stdin_is_tty"],"mod":["parser"],"struct":["Cmd","ConfChannel","Job","Notification","Pipeline","ProjectConfig"]};

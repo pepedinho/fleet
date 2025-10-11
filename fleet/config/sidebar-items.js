@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["find_pipe_dependance"],"mod":["parser"],"struct":["Cmd","ConfChannel","Job","Notification","Pipeline","ProjectConfig"]};
+window.SIDEBAR_ITEMS = {"fn":["find_pipe_dependance","stdin_is_tty"],"mod":["parser"],"struct":["Cmd","ConfChannel","Job","Notification","Pipeline","ProjectConfig"]};
