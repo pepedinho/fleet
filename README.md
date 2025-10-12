@@ -103,7 +103,7 @@ fleet watch
 
 | Command                 | Description                                                                            |
 | ----------------------- | -----------------------------------------------------------------------------          |
-| `fleet watch`           | Add a project to the watch list (run inside the project dir) (`-b` to assign branch)   |
+| `fleet watch`           | Add a project to the watch list (run inside the project dir)                           |
 | `fleet logs [id\|name]` | Show logs for a project (current dir by default) (`-f` to follow logs)                 |
 | `fleet ps`              | List watched projects (`-a` to show stopped projects)                                  |
 | `fleet stop <id>`       | Stop watching a project                                                                |
@@ -131,6 +131,8 @@ ENV: &default_env
   DISCORD_TOKEN: $
   D_WEBHOOK_G: $
   D_WEBHOOK_T: $
+
+branches: ['*'] #you can use wildcard for all or directly a list of branches
 
 timeout: 800
 
