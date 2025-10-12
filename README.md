@@ -5,6 +5,7 @@
 
 ![Rust](https://img.shields.io/badge/rust-stable-orange)
 [![Documentation](https://docs.rs/tokio/badge.svg)](https://pepedinho.github.io/fleet/core_lib/all.html)
+[![codecov](https://codecov.io/github/pepedinho/fleet/graph/badge.svg?token=QNXFBLPKNV)](https://codecov.io/github/pepedinho/fleet)
 
 Fleet is a **lightweight CI/CD orchestrator** written in Rust.  
 Unlike traditional CI/CD systems (GitHub Actions, GitLab CI, Jenkins…), Fleet is designed to run **directly on your host machine** (Raspberry Pi, server, VPS, NAS…).  
