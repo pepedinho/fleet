@@ -216,7 +216,7 @@ async fn handle_add_watch(
 }
 
 /// Stops a watch by ID if it exists in the application state.
-async fn handle_stop_watch(state: Arc<AppState>, id: String) -> DaemonResponse {
+pub async fn handle_stop_watch(state: Arc<AppState>, id: String) -> DaemonResponse {
     match async {
         let mut guard = state.watches.write().await;
         if let Some(w) = guard.get_mut(&id) {
