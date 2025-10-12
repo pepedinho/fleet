@@ -55,6 +55,8 @@ jobs:
           rustup default stable
       - name: Clear files      
         run: rm -rf ~/.local/share/fleetd
+      - name: Prepare directory
+        run: mkdir -p ~/.fleet/logs ~/.fleet/metrics
       - name: Run cargo test 
         run: cargo test --features no-tty --test utiles_test --test scheduler_test --test git_test --test daemon_test --  --test-threads=1
 
