@@ -215,7 +215,10 @@ impl ExecMetrics {
     }
 
     pub fn rm_metrics_by_id(id: &str) -> anyhow::Result<()> {
-        std::fs::remove_file(ExecMetrics::get_metrics_path_by_id(id)?)?;
+        let path = ExecMetrics::get_metrics_path_by_id(id)?;
+        if path.exists() {
+            std::fs::remove_file(path)?;
+        }
         Ok(())
     }
 

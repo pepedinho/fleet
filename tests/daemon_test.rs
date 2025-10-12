@@ -1,12 +1,33 @@
 use std::{collections::HashMap, env::temp_dir, sync::Arc};
 
 use core_lib::{
-    core::{self, state::AppState},
-    daemon::server::{DaemonResponse, handle_list_watches, handle_rm_watch},
+    config::ProjectConfig,
+    core::{self, state::AppState, watcher::WatchContextBuilder},
+    daemon::server::{
+        DaemonResponse, handle_list_watches, handle_rm_watch, handle_stop_watch, handle_up_watch,
+    },
+    git::repo::{Branch, Branches, Repo},
     log::logger::Logger,
 };
 use pretty_assertions::assert_eq;
 use tokio::{fs, sync::RwLock};
+
+fn build_repo() -> Repo {
+    Repo {
+        branches: Branches {
+            name: "main".to_string(),
+            branches: vec![Branch {
+                name: "main".to_string(),
+                remote: "git://github.com/pepedinho/fleet.git".to_string(),
+                ..Default::default()
+            }],
+            last_commit: "abc".to_string(),
+            last_name: "main".to_string(),
+        },
+        name: "name".to_string(),
+        remote: "git://github.com/pepedinho/fleet.git".to_string(),
+    }
+}
 
 #[test]
 fn test_id_generation() {
@@ -73,118 +94,103 @@ async fn test_concurent_log_writes() -> anyhow::Result<()> {
     Ok(())
 }
 
-// #[tokio::test]
-// async fn test_handle_stop_watch_existing() -> anyhow::Result<()> {
-//     init_watch_file().await?;
-//     let id = "watch_stop".to_string();
+#[tokio::test]
+async fn test_handle_stop_watch_existing() -> anyhow::Result<()> {
+    AppState::init_watch_file().await?;
+    let id = "watch_stop".to_string();
 
-//     let mut map = HashMap::new();
-//     let ctx = WatchContext {
-//         paused: false,
-//         project_dir: "dir".to_string(),
-//         branch: "main".to_string(),
-//         repo: Repo {
-//             branch: "main".to_string(),
-//             last_commit: "abc".to_string(),
-//             name: "name".to_string(),
-//             remote: "".to_string(),
-//         },
-//         id: id.clone(),
-//         config: ProjectConfig::default(),
-//     };
+    let mut map = HashMap::new();
+    let ctx = WatchContextBuilder::new(
+        build_repo(),
+        ProjectConfig::default(),
+        "dir".to_string(),
+        id.clone(),
+    )
+    .build()
+    .await?;
 
-//     map.insert(id.clone(), ctx);
-//     let state = Arc::new(AppState {
-//         watches: RwLock::new(map),
-//     });
+    map.insert(id.clone(), ctx);
+    let state = Arc::new(AppState {
+        watches: RwLock::new(map),
+    });
 
-//     let response = handle_stop_watch(state.clone(), id.clone()).await;
-//     remove_watch_by_id(&id).await?;
+    let response = handle_stop_watch(state.clone(), id.clone()).await;
+    AppState::remove_watch_by_id(&id).await?;
 
-//     match response {
-//         DaemonResponse::Success(msg) => {
-//             assert!(msg.contains("Watch stopped"));
-//         }
-//         _ => panic!("Expected success response"),
-//     }
-//     Ok(())
-// }
+    match response {
+        DaemonResponse::Success(msg) => {
+            assert!(msg.contains("Watch stopped"));
+        }
+        _ => panic!("Expected success response"),
+    }
+    Ok(())
+}
 
-// #[tokio::test]
-// async fn test_handle_up_watch_existing() -> anyhow::Result<()> {
-//     init_watch_file().await?;
-//     let id = "watch_up".to_string();
+#[tokio::test]
+async fn test_handle_up_watch_existing() -> anyhow::Result<()> {
+    AppState::init_watch_file().await?;
+    let id = "watch_up".to_string();
 
-//     let mut map = HashMap::new();
+    let mut map: HashMap<String, core::watcher::WatchContext> = HashMap::new();
 
-//     let repo = Repo {
-//         branch: "main".to_string(),
-//         last_commit: "abc".to_string(),
-//         name: "name".to_string(),
-//         remote: "git://github.com/pepedinho/fleet.git".to_string(),
-//     };
-//     let ctx = WatchContextBuilder::new(
-//         "main".to_string(),
-//         repo,
-//         ProjectConfig::default(),
-//         "dir".to_string(),
-//         id.clone(),
-//     )
-//     .build()
-//     .await?;
+    let repo = build_repo();
+    let ctx = WatchContextBuilder::new(
+        repo,
+        ProjectConfig::default(),
+        "dir".to_string(),
+        id.clone(),
+    )
+    .build()
+    .await?;
 
-//     ctx.logger.clean().await?;
-//     map.insert(id.clone(), ctx);
-//     let state = Arc::new(AppState {
-//         watches: RwLock::new(map),
-//     });
+    ctx.logger.clean().await?;
+    map.insert(id.clone(), ctx);
+    let state = Arc::new(AppState {
+        watches: RwLock::new(map),
+    });
 
-//     let response = handle_up_watch(state.clone(), id.clone()).await;
-//     remove_watch_by_id(&id).await?;
+    let response = handle_up_watch(state.clone(), id.clone()).await;
+    AppState::remove_watch_by_id(&id).await?;
 
-//     match response {
-//         DaemonResponse::Success(msg) => {
-//             assert!(msg.contains("Watch up"));
-//         }
-//         _ => panic!("Excpected succes response"),
-//     }
+    match response {
+        DaemonResponse::Success(msg) => {
+            assert!(msg.contains("Watch up"));
+        }
+        _ => panic!("Excpected succes response"),
+    }
 
-//     Ok(())
-// }
+    Ok(())
+}
 
-// #[tokio::test]
-// async fn test_handle_rm_watch_existing() -> anyhow::Result<()> {
-//     init_watch_file().await?;
-//     let id = "rm_watch".to_string();
+#[tokio::test]
+async fn test_handle_rm_watch_existing() -> anyhow::Result<()> {
+    AppState::init_watch_file().await?;
+    let id = "rm_watch".to_string();
 
-//     let mut map = HashMap::new();
-//     let ctx = WatchContext {
-//         paused: false,
-//         project_dir: "dir".to_string(),
-//         branch: "main".to_string(),
-//         repo: Repo {
-//             branch: "main".to_string(),
-//             last_commit: "abc".to_string(),
-//             name: "name".to_string(),
-//             remote: "".to_string(),
-//         },
-//         id: id.clone(),
-//         config: ProjectConfig::default(),
-//     };
-//     map.insert(id.clone(), ctx);
+    let mut map = HashMap::new();
+    let ctx = WatchContextBuilder::new(
+        build_repo(),
+        ProjectConfig::default(),
+        "dir".to_string(),
+        id.clone(),
+    )
+    .build()
+    .await?;
+    map.insert(id.clone(), ctx);
 
-//     let state = Arc::new(AppState {
-//         watches: RwLock::new(map),
-//     });
+    let state = Arc::new(AppState {
+        watches: RwLock::new(map),
+    });
 
-//     let response = handle_rm_watch(state.clone(), id.clone()).await;
+    let response = handle_rm_watch(state.clone(), id.clone()).await;
 
-//     match response {
-//         DaemonResponse::Success(msg) => assert!(msg.contains("was deleted")),
-//         _ => panic!("Expected succes response"),
-//     }
-//     Ok(())
-// }
+    dbg!(&response);
+    match response {
+        DaemonResponse::Success(msg) => assert!(msg.contains("was deleted")),
+        _ => panic!("Expected succes response"),
+    }
+    Ok(())
+}
 
 #[tokio::test]
 async fn test_handle_rm_non_existing() -> anyhow::Result<()> {
@@ -201,43 +207,37 @@ async fn test_handle_rm_non_existing() -> anyhow::Result<()> {
     Ok(())
 }
 
-// #[tokio::test]
-// async fn test_handle_list_watches_existing() -> anyhow::Result<()> {
-//     let mut map = HashMap::new();
-//     let repo = Repo {
-//         branch: "main".to_string(),
-//         last_commit: "abc".to_string(),
-//         name: "name".to_string(),
-//         remote: "git://github.com/pepedinho/fleet.git".to_string(),
-//     };
-//     let ctx = WatchContextBuilder::new(
-//         "main".to_string(),
-//         repo,
-//         ProjectConfig::default(),
-//         "dir".to_string(),
-//         "watch1".to_string(),
-//     )
-//     .build()
-//     .await?;
-//     ctx.logger.clean().await?;
+#[tokio::test]
+async fn test_handle_list_watches_existing() -> anyhow::Result<()> {
+    let mut map = HashMap::new();
+    let repo = build_repo();
+    let ctx = WatchContextBuilder::new(
+        repo,
+        ProjectConfig::default(),
+        "dir".to_string(),
+        "watch1".to_string(),
+    )
+    .build()
+    .await?;
+    ctx.logger.clean().await?;
 
-//     map.insert("watch1".to_string(), ctx);
+    map.insert("watch1".to_string(), ctx);
 
-//     let state = Arc::new(AppState {
-//         watches: RwLock::new(map),
-//     });
+    let state = Arc::new(AppState {
+        watches: RwLock::new(map),
+    });
 
-//     let response = handle_list_watches(state.clone(), false).await;
+    let response = handle_list_watches(state.clone(), false).await;
 
-//     match response {
-//         DaemonResponse::ListWatches(list) => {
-//             assert_eq!(list.len(), 1);
-//             assert_eq!(list[0].id, "watch1");
-//         }
-//         _ => panic!("Expected list watches"),
-//     }
-//     Ok(())
-// }
+    match response {
+        DaemonResponse::ListWatches(list) => {
+            assert_eq!(list.len(), 1);
+            assert_eq!(list[0].id, "watch1");
+        }
+        _ => panic!("Expected list watches"),
+    }
+    Ok(())
+}
 
 #[tokio::test]
 async fn test_handle_list_watches_empty() -> anyhow::Result<()> {
