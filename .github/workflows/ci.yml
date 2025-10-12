@@ -57,6 +57,9 @@ jobs:
       - name: Prepare directory
         run: mkdir -p ~/.fleet/logs ~/.fleet/metrics
       - name: Run cargo test 
+        env:
+          RUST_BACKTRACE: full
+          RUST_LOG: debug
         run: cargo test --features no-tty --test utiles_test --test scheduler_test --test git_test --test daemon_test --  --test-threads=1
 
   build:
@@ -75,3 +78,46 @@ jobs:
         with:
           name: rust-binary
           path: target/release/
+
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        run: |
+          rustup update stable
+          rustup default stable
+
+      - name: Install Tarpaulin
+        run: cargo install cargo-tarpaulin
+
+      - name: Clear files      
+        run: rm -rf ~/.local/share/fleetd
+      - name: Prepare directory
+        run: mkdir -p ~/.fleet/logs ~/.fleet/metrics
+
+      - name: Run coverage
+        run: |
+          mkdir -p coverage
+          cargo tarpaulin \
+            --engine llvm \
+            --timeout 300 \
+            --out Lcov \
+            --out Html \
+            --output-dir coverage \
+            -- --test-threads=1
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage/tarpaulin-report.lcov
+          flags: unittests
+          fail_ci_if_error: true
