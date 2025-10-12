@@ -90,6 +90,11 @@ jobs:
       - name: Install Tarpaulin
         run: cargo install cargo-tarpaulin
 
+      - name: Clear files      
+        run: rm -rf ~/.local/share/fleetd
+      - name: Prepare directory
+        run: mkdir -p ~/.fleet/logs ~/.fleet/metrics
+
       - name: Run coverage
         run: |
           mkdir -p coverage
