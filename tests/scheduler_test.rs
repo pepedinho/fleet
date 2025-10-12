@@ -137,6 +137,10 @@ async fn test_independent_jobs_run_in_parallel() -> anyhow::Result<()> {
     let ctx = build_test_ctx("test_multiple_dependencies", jobs).await?;
 
     run_pipeline(ctx.clone()).await.unwrap();
+
+    dbg!(&ctx);
+    eprintln!("debug: log_path: {}", ctx.log_path().display());
+
     let content = fs::read_to_string(ctx.log_path())?;
 
     assert!(content.contains("job1"));
