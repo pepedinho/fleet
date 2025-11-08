@@ -1,12 +1,6 @@
 name: Rust CI
 
-on:
-  push:
-    branches:
-      - "**"
-  pull_request:
-    branches:
-      - "**"
+on: [push, pull_request]
 
 jobs:
   fmt:
@@ -15,9 +9,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust
-        run: |
-          rustup update stable
-          rustup default stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          component: rustfmt
       - name: Run cargo fmt
         run: cargo fmt --all -- --check
 
@@ -26,10 +20,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
       - name: Install Rust
-        run: |
-          rustup update stable
-          rustup default stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          component: clippy
       - name: Run cargo clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
 
@@ -38,20 +34,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Cache Cargo dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
       - name: Install Rust
-        run: |
-          rustup update stable
-          rustup default stable
+        uses: dtolnay/rust-toolchain@stable
       - name: Clear files      
         run: rm -rf ~/.local/share/fleetd
       - name: Prepare directory
@@ -67,10 +53,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
       - name: Install Rust
-        run: |
-          rustup update stable
-          rustup default stable
+        uses: dtolnay/rust-toolchain@stable
       - name: Build release binary
         run: cargo build --release
       - name: Upload binary artifact
@@ -85,15 +71,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-directories: ~/.cargo/bin/cargo-tarpaulin
+
       - name: Install Rust
-        run: |
-          rustup update stable
-          rustup default stable
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install Tarpaulin
         run: cargo install cargo-tarpaulin
 
-      - name: Clear files      
+      - name: Clear files
         run: rm -rf ~/.local/share/fleetd
       - name: Prepare directory
         run: mkdir -p ~/.fleet/logs ~/.fleet/metrics
