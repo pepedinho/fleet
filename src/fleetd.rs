@@ -17,6 +17,8 @@ mod notifications;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    crate::log::tracing::init_tracing();
+
     AppState::init_watch_file().await?;
     let state = Arc::new(AppState::load_from_disk().await?);
     WatchContext::init_logs().await?;

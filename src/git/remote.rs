@@ -20,6 +20,7 @@ pub fn find_ssh_key() -> Result<PathBuf, Error> {
 }
 
 pub fn get_remote_branch_hash(url: &str, branch: &str) -> Result<String, Error> {
+    tracing::trace!(%url, %branch, "fetching remote branch hash");
     let mut callbacks = RemoteCallbacks::new();
 
     callbacks.credentials(|_url, username_from_url, allowed_types| {
@@ -51,8 +52,10 @@ pub fn get_remote_branch_hash(url: &str, branch: &str) -> Result<String, Error> 
 
     let mut remote = Remote::create_detached(url)?;
     remote.connect_auth(git2::Direction::Fetch, Some(callbacks), None)?;
+    tracing::debug!(%url, %branch, "remote connected");
 
     let refs = remote.list()?;
+    tracing::debug!(%url, %branch, refs = refs.len(), "listing remote refs");
 
     let branch_name = if let Some(end) = branch.strip_prefix("origin/") {
         end
