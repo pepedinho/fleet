@@ -132,7 +132,6 @@ pub fn load_config(path: &Path) -> Result<ProjectConfig> {
             }
         }
     }
-    // dbg!(&config);
     check_dependency_graph(&config)?;
     Ok(config)
 }
