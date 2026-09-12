@@ -210,7 +210,6 @@ pub async fn load_all_stats() -> Result<Vec<ProjectStats>> {
             mem_kb: avg_mem_kb,
         });
     }
-    // dbg!(&stats);
     stats.sort_by(|a, b| {
         let a_last = a
             .last_duration
