@@ -64,7 +64,6 @@ fn build_add_watch_request() -> Result<DaemonRequest> {
 
     repo.branches.name = b_name; //  asigne default name
     repo.branches.last_commit = repo.branches.default_last_commit()?;
-    println!("debug: repo branches: {:#?}", repo.branches);
 
     Ok(DaemonRequest::AddWatch {
         project_dir: std::env::current_dir()?.to_string_lossy().into_owned(),

@@ -22,6 +22,10 @@ pub enum JobStatus {
     Skipped,
 }
 
+/// Cap on the in-memory per-job sampling buffer (~36s at the 100ms sampling
+/// rate). Keeps memory bounded on long-running steps.
+const MAX_BUF_SAMPLES: usize = 360;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JobMetrics {
     pub name: String,
@@ -80,6 +84,9 @@ impl ExecMetrics {
     pub fn sys_push(&mut self, name: &str, cpu: f32, mem: u64) {
         if let Some(j) = self.jobs.get_mut(name) {
             j.buf.push((cpu, mem));
+            if j.buf.len() > MAX_BUF_SAMPLES {
+                j.buf.remove(0);
+            }
         }
     }
 

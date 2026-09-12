@@ -13,6 +13,8 @@ mod notifications;
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
+    crate::log::tracing::init_tracing();
+
     let cli = Cli::parse();
 
     handle_watch(&cli).await?;

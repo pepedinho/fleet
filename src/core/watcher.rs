@@ -117,13 +117,14 @@ pub fn watch_once(repo: &mut Repo) -> Result<Option<String>, anyhow::Error> {
                 println!("new commit detected: {} -> {}", b.last_commit, remote_hash);
                 return Ok(Some(remote_hash));
             }
-            return Ok(None);
+            Ok(None)
         })?;
 
         let first_new = res.into_iter().flatten().next();
         if let Some(commit) = &first_new {
             repo.branches.last_commit = commit.clone();
             repo.branches.last_name = name;
+            tracing::info!(branch = %repo.branches.last_name, commit = %commit, "new commit detected");
         }
         Ok(first_new)
     }

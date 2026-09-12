@@ -9,7 +9,7 @@ use crate::{
         state::{AppState, get_id_by_name, get_name_by_id},
         watcher::{WatchContext, WatchContextBuilder},
     },
-    daemon::utiles::extract_repo_path,
+    daemon::utils::extract_repo_path,
     exec::{metrics::ExecMetrics, pipeline::run_pipeline},
     git::repo::Repo,
     log::logger::Logger,
@@ -90,7 +90,6 @@ pub enum DaemonResponse {
 
 pub async fn get_log_file(ctx: &WatchContext) -> Result<File> {
     let log_path = ctx.log_path();
-    println!("log path => {}", log_path.to_str().unwrap());
     let log_file = OpenOptions::new()
         .create(true)
         .append(true)
@@ -102,10 +101,6 @@ pub async fn get_log_file(ctx: &WatchContext) -> Result<File> {
 async fn get_logs_by_id(id: &str) -> Result<String> {
     let log_path = WatchContext::log_path_by_id(id);
 
-    // let file = File::open(&log_path).await?;
-    // let mut reader = BufReader::new(file);
-    // let mut contents = String::new();
-    // reader.read_to_string(&mut contents).await?;
     match log_path.to_str() {
         Some(p) => Ok(String::from(p)),
         None => Err(anyhow::anyhow!("Failed to find log path")),
@@ -180,27 +175,28 @@ async fn handle_add_watch(
     repo: Repo,
     config: ProjectConfig,
 ) -> anyhow::Result<DaemonResponse> {
-    let mut guard = state.watches.write().await;
-    let existing_id = guard
-        .iter()
-        .find(|(_, ctx)| ctx.project_dir == project_dir)
-        .map(|(id, _ctx)| id.clone());
-
-    let id = existing_id.unwrap_or_else(short_id);
+    let id = {
+        let guard = state.watches.read().await;
+        guard
+            .iter()
+            .find(|(_, ctx)| ctx.project_dir == project_dir)
+            .map(|(id, _ctx)| id.clone())
+            .unwrap_or_else(short_id)
+    };
 
     let ctx = WatchContextBuilder::new(repo, config, project_dir, id.clone())
         .build()
         .await?;
 
     let result = async {
-        let logger = Logger::new(&ctx.log_path()).await?;
+        // Disk I/O happens outside the state lock.
+        AppState::add_watch(&ctx).await?;
         {
-            // delete the projects with the same project_dir, before saving the new one
+            let mut guard = state.watches.write().await;
             guard.retain(|_, existing_ctx| existing_ctx.project_dir != ctx.project_dir);
-            AppState::add_watch(&ctx).await?;
-            guard.insert(id.clone(), ctx);
+            guard.insert(id.clone(), ctx.clone());
         }
-        logger
+        ctx.logger
             .info(&format!("Project registered with ID : {id}"))
             .await?;
         Ok::<_, anyhow::Error>(())
@@ -218,13 +214,22 @@ async fn handle_add_watch(
 /// Stops a watch by ID if it exists in the application state.
 pub async fn handle_stop_watch(state: Arc<AppState>, id: String) -> DaemonResponse {
     match async {
-        let mut guard = state.watches.write().await;
-        if let Some(w) = guard.get_mut(&id) {
-            w.stop();
-            AppState::add_watch(w).await?;
-            Ok::<_, anyhow::Error>(format!("🛑 Watch stopped for ID: {id}"))
-        } else {
-            Err(anyhow::anyhow!("⚠ ID not found: {}", id))
+        let updated = {
+            let mut guard = state.watches.write().await;
+            match guard.get_mut(&id) {
+                Some(w) => {
+                    w.stop();
+                    Some(w.clone())
+                }
+                None => None,
+            }
+        };
+        match updated {
+            Some(w) => {
+                AppState::add_watch(&w).await?;
+                Ok::<_, anyhow::Error>(format!("🛑 Watch stopped for ID: {id}"))
+            }
+            None => Err(anyhow::anyhow!("⚠ ID not found: {}", id)),
         }
     }
     .await
@@ -237,13 +242,22 @@ pub async fn handle_stop_watch(state: Arc<AppState>, id: String) -> DaemonRespon
 /// Run a watch by ID if it exists in the application state.
 pub async fn handle_up_watch(state: Arc<AppState>, id: String) -> DaemonResponse {
     match async {
-        let mut guard = state.watches.write().await;
-        if let Some(w) = guard.get_mut(&id) {
-            w.run();
-            AppState::add_watch(w).await?;
-            Ok::<_, anyhow::Error>(format!("🟢 Watch up for ID: {id}"))
-        } else {
-            Err(anyhow::anyhow!("⚠ ID not found: {}", id))
+        let updated = {
+            let mut guard = state.watches.write().await;
+            match guard.get_mut(&id) {
+                Some(w) => {
+                    w.run();
+                    Some(w.clone())
+                }
+                None => None,
+            }
+        };
+        match updated {
+            Some(w) => {
+                AppState::add_watch(&w).await?;
+                Ok::<_, anyhow::Error>(format!("🟢 Watch up for ID: {id}"))
+            }
+            None => Err(anyhow::anyhow!("⚠ ID not found: {}", id)),
         }
     }
     .await
@@ -256,10 +270,14 @@ pub async fn handle_up_watch(state: Arc<AppState>, id: String) -> DaemonResponse
 /// Rm a watch by ID if it exists in the application state.
 pub async fn handle_rm_watch(state: Arc<AppState>, id: String) -> DaemonResponse {
     match async {
-        let mut guard = state.watches.write().await;
-        if let Some(w) = guard.remove(&id) {
+        let removed = {
+            let mut guard = state.watches.write().await;
+            guard.remove(&id)
+        };
+        if let Some(w) = removed {
+            // All disk I/O happens after the state lock is released.
             ExecMetrics::rm_metrics_by_id(&id)?; // remove metrics file
-            Logger::rm_logs_by_id(&id)?; // remove log file 
+            Logger::rm_logs_by_id(&id)?; // remove log file
             AppState::remove_watch_by_id(&id).await?; // remove this watch in watches.json
             Ok::<_, anyhow::Error>(format!("Project: {} was deleted", w.repo.name))
         } else {

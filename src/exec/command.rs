@@ -47,20 +47,30 @@ pub async fn run_command_with_timeout(
 
     let mut child = cmd.spawn()?;
 
-    let (tx, mut rx) = tokio::sync::mpsc::channel(1);
-    let child_pid = child.id();
-    tokio::spawn(async move {
-        let metrics = monitor_process(child_pid.unwrap_or(1)).await;
-        let _ = tx.send(metrics).await;
-    });
+    // Only monitor the child when we actually have its pid. Sampling PID 1
+    // ("init") instead would monitor an unrelated process that never exits,
+    // turning every command into a spurious timeout.
+    let metrics_rx = match child.id() {
+        Some(pid) => {
+            let (tx, rx) = tokio::sync::mpsc::channel(1);
+            tokio::spawn(async move {
+                let metrics = monitor_process(pid).await;
+                let _ = tx.send(metrics).await;
+            });
+            Some(rx)
+        }
+        None => None,
+    };
 
     let duration = Duration::from_secs(timeout_secs);
 
     let run_future = async {
         let status = child.wait().await?;
 
-        let (cpu_usage, mem_usage_kb) = rx.recv().await.unwrap_or((0.0, 0));
-        println!("METRICS EXTRACTED => {cpu_usage} | {mem_usage_kb}");
+        let (cpu_usage, mem_usage_kb) = match metrics_rx {
+            Some(mut rx) => rx.recv().await.unwrap_or((0.0, 0)),
+            None => (0.0, 0),
+        };
         anyhow::Ok((status, cpu_usage, mem_usage_kb))
     };
 
