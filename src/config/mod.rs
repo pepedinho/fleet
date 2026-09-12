@@ -90,7 +90,6 @@ impl ProjectConfig {
                     .last()
                     .unwrap();
                 let target = String::from(&j.steps.last().unwrap().cmd);
-                println!("[1]'{target}' has design as target");
                 return Ok(OutpuStrategy::ToPipeOut {
                     cmd: cmd.cmd.clone(),
                     stdout: stdout_file,
