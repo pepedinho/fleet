@@ -60,7 +60,6 @@ pub async fn run_command_with_timeout(
         let status = child.wait().await?;
 
         let (cpu_usage, mem_usage_kb) = rx.recv().await.unwrap_or((0.0, 0));
-        println!("METRICS EXTRACTED => {cpu_usage} | {mem_usage_kb}");
         anyhow::Ok((status, cpu_usage, mem_usage_kb))
     };
 

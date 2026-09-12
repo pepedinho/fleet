@@ -90,7 +90,6 @@ pub enum DaemonResponse {
 
 pub async fn get_log_file(ctx: &WatchContext) -> Result<File> {
     let log_path = ctx.log_path();
-    println!("log path => {}", log_path.to_str().unwrap());
     let log_file = OpenOptions::new()
         .create(true)
         .append(true)
@@ -102,10 +101,6 @@ pub async fn get_log_file(ctx: &WatchContext) -> Result<File> {
 async fn get_logs_by_id(id: &str) -> Result<String> {
     let log_path = WatchContext::log_path_by_id(id);
 
-    // let file = File::open(&log_path).await?;
-    // let mut reader = BufReader::new(file);
-    // let mut contents = String::new();
-    // reader.read_to_string(&mut contents).await?;
     match log_path.to_str() {
         Some(p) => Ok(String::from(p)),
         None => Err(anyhow::anyhow!("Failed to find log path")),
@@ -201,7 +196,7 @@ async fn handle_add_watch(
             guard.insert(id.clone(), ctx);
         }
         logger
-            .info(&format!("Project registered with ID : {}", &id))
+            .info(&format!("Project registered with ID : {id}"))
             .await?;
         Ok::<_, anyhow::Error>(())
     }
