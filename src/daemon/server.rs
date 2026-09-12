@@ -9,7 +9,7 @@ use crate::{
         state::{AppState, get_id_by_name, get_name_by_id},
         watcher::{WatchContext, WatchContextBuilder},
     },
-    daemon::utiles::extract_repo_path,
+    daemon::utils::extract_repo_path,
     exec::{metrics::ExecMetrics, pipeline::run_pipeline},
     git::repo::Repo,
     log::logger::Logger,
