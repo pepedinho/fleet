@@ -67,7 +67,7 @@ pub async fn run_command_with_timeout(
     let run_future = async {
         let status = child.wait().await?;
 
-        let (cpu_usage, mem_usage_kb) = match metrics_rx {
+let (cpu_usage, mem_usage_kb) = match metrics_rx {
             Some(mut rx) => rx.recv().await.unwrap_or((0.0, 0)),
             None => (0.0, 0),
         };
