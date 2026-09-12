@@ -1,13 +1,7 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="`supervisor_loop`"><title>supervisor_loop in fleetd::core::manager - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="fleetd" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.1 (48a229cea 2026-09-01)" data-channel="1.98.1" data-search-js="search-9944d736.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc fn"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><rustdoc-topbar><h2><a href="#">supervisor_loop</a></h2></rustdoc-topbar><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../fleetd/index.html">fleetd</a><span class="version">1.0.0</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">supervisor_<wbr>loop</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#supervisor_loop" title="`supervisor_loop`"><code>supervisor_loop</code></a><ul><li><a href="#description" title="Description">Description</a></li><li><a href="#arguments" title="Arguments">Arguments</a></li><li><a href="#behavior" title="Behavior">Behavior</a></li><li><a href="#example-usage" title="Example Usage">Example Usage</a></li><li><a href="#notes" title="Notes">Notes</a></li></ul></li></ul></section><div id="rustdoc-modnav"><h2><a href="index.html">In fleetd::<wbr>core::<wbr>manager</a></h2></div></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><div class="width-limiter"><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><div class="rustdoc-breadcrumbs"><a href="../../index.html">fleetd</a>::<wbr><a href="../index.html">core</a>::<wbr><a href="index.html">manager</a></div><h1>Function <span class="fn">supervisor_<wbr>loop</span>&nbsp;<button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../../src/fleetd/core/manager.rs.html#22-50">Source</a> </span></div><pre class="rust item-decl"><code>pub async fn supervisor_loop(state: <a class="struct" href="https://doc.rust-lang.org/1.98.1/alloc/sync/struct.Arc.html" title="struct alloc::sync::Arc">Arc</a>&lt;<a class="struct" href="../state/struct.AppState.html" title="struct fleetd::core::state::AppState">AppState</a>&gt;, interval_secs: <a class="primitive" href="https://doc.rust-lang.org/1.98.1/std/primitive.u64.html">u64</a>)</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="supervisor_loop"><a class="doc-anchor" href="#supervisor_loop">§</a><code>supervisor_loop</code></h2><h3 id="description"><a class="doc-anchor" href="#description">§</a>Description</h3>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="`supervisor_loop`"><title>supervisor_loop in fleetd::core::manager - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="fleetd" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.1 (48a229cea 2026-09-01)" data-channel="1.98.1" data-search-js="search-9944d736.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc fn"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><rustdoc-topbar><h2><a href="#">supervisor_loop</a></h2></rustdoc-topbar><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../fleetd/index.html">fleetd</a><span class="version">1.0.0</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">supervisor_<wbr>loop</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#supervisor_loop" title="`supervisor_loop`"><code>supervisor_loop</code></a><ul><li><a href="#description" title="Description">Description</a></li><li><a href="#arguments" title="Arguments">Arguments</a></li><li><a href="#behavior" title="Behavior">Behavior</a></li><li><a href="#example-usage" title="Example Usage">Example Usage</a></li><li><a href="#notes" title="Notes">Notes</a></li></ul></li></ul></section><div id="rustdoc-modnav"><h2><a href="index.html">In fleetd::<wbr>core::<wbr>manager</a></h2></div></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><div class="width-limiter"><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><div class="rustdoc-breadcrumbs"><a href="../../index.html">fleetd</a>::<wbr><a href="../index.html">core</a>::<wbr><a href="index.html">manager</a></div><h1>Function <span class="fn">supervisor_<wbr>loop</span>&nbsp;<button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../../src/fleetd/core/manager.rs.html#46-116">Source</a> </span></div><pre class="rust item-decl"><code>pub async fn supervisor_loop(state: <a class="struct" href="https://doc.rust-lang.org/1.98.1/alloc/sync/struct.Arc.html" title="struct alloc::sync::Arc">Arc</a>&lt;<a class="struct" href="../state/struct.AppState.html" title="struct fleetd::core::state::AppState">AppState</a>&gt;, interval_secs: <a class="primitive" href="https://doc.rust-lang.org/1.98.1/std/primitive.u64.html">u64</a>)</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="supervisor_loop"><a class="doc-anchor" href="#supervisor_loop">§</a><code>supervisor_loop</code></h2><h3 id="description"><a class="doc-anchor" href="#description">§</a>Description</h3>
 <p>The <code>supervisor_loop</code> function is the <strong>main orchestration loop</strong> of the daemon.<br />
 It periodically checks for updates in all watched repositories and triggers pipelines when new commits are detected.</p>
-<p>This function runs indefinitely, performing the following steps at each interval:</p>
-<ol>
-<li>Collects updates from all active watches.</li>
-<li>Applies commit updates to the in-memory state.</li>
-<li>Executes the processing pipeline for updated projects.</li>
-<li>Persists the state to disk if changes occurred.</li>
-</ol>
+<p>The loop never holds the global state lock across blocking I/O, so a slow or unreachable remote cannot freeze the daemon.</p>
 <hr />
 <h3 id="arguments"><a class="doc-anchor" href="#arguments">§</a>Arguments</h3>
 <ul>
@@ -27,29 +21,21 @@ It periodically checks for updates in all watched repositories and triggers pipe
 <li>
 <p><strong>Update Collection</strong></p>
 <ul>
-<li>Calls <code>collect_updates(&amp;state)</code> to determine which projects have new commits available.</li>
-<li>Returns a list of <code>(id, new_commit)</code> pairs to be updated.</li>
+<li>Calls <code>collect_updates(&amp;state, &amp;git_semaphore)</code>, which returns the ids of watches that received a new commit.</li>
+<li>Polling is bounded: git calls run in <code>spawn_blocking</code> with a 30s timeout and at most <code>MAX_CONCURRENT_GIT_POLLS</code> in flight, so one stalled remote cannot starve the daemon.</li>
 </ul>
 </li>
 <li>
-<p><strong>Commit Updates &amp; Pipeline Execution</strong><br />
+<p><strong>Pipeline Scheduling</strong><br />
 For each updated project:</p>
 <ul>
-<li>Calls <code>update_commit</code> to update the in-memory commit reference.</li>
-<li>Retrieves the <code>WatchContext</code> via <code>get_watch_ctx</code>.</li>
-<li>Runs the associated pipeline with <code>run_pipeline</code>.
+<li>Skips it if a pipeline for that watch is already running.</li>
+<li>Clones the <code>WatchContext</code>, switches to the branch to be deployed (best-effort, off the runtime), then executes the associated pipeline in a <strong>spawned task</strong> — pipelines are no longer run inline, so a long build does not delay the next supervision cycle.
 <ul>
-<li>On success, logs a ✅ success message and marks the state as dirty.</li>
+<li>On success, persists the state to disk (single-writer, guarded) and logs a ✅ message.</li>
 <li>On failure, logs a ❌ error with details.</li>
 </ul>
 </li>
-</ul>
-</li>
-<li>
-<p><strong>State Persistence</strong></p>
-<ul>
-<li>If at least one pipeline succeeded (<code>dirty == true</code>), the updated state is saved to disk using <code>state.save_to_disk()</code>.</li>
-<li>Errors during persistence are logged.</li>
 </ul>
 </li>
 <li>
@@ -72,8 +58,9 @@ For each updated project:</p>
 <h3 id="notes"><a class="doc-anchor" href="#notes">§</a>Notes</h3>
 <ul>
 <li>The supervisor is <strong>always running</strong>, ensuring projects are kept in sync with their remote repositories.</li>
-<li>Pipeline execution is performed sequentially within each cycle, but each cycle runs concurrently with other daemon tasks (e.g., socket listener).</li>
-<li>Proper error handling ensures that a failing pipeline does not stop the supervisor loop.</li>
-<li>The persistence step guarantees that the orchestrator can recover its state after a restart.</li>
+<li>The state lock is only ever held for cheap in-memory reads/writes; all blocking git I/O happens outside of it.</li>
+<li>A failing pipeline does not stop the supervisor loop.</li>
+<li>Per-watch pipelines can overlap across two different watches, but never for the same watch.</li>
+<li>The persistence step is serialized so <code>watches.json</code> is written by a single writer at a time.</li>
 </ul>
 </div></details></section></div></main></body></html>

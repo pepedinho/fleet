@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["collect_updates","get_watch_ctx","start_socket_listener","supervisor_loop","update_commit"]};
+window.SIDEBAR_ITEMS = {"fn":["collect_updates","get_watch_ctx","git_poll_timeout","max_concurrent_git_polls","start_socket_listener","supervisor_loop"]};
