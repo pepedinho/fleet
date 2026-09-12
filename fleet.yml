@@ -1,4 +1,5 @@
-# new config
+# Self-test config for the fleet repository itself.
+# Notifications are intentionally omitted: no live webhook URLs live in this repo.
 
 ENV: &default_env
   SECRET_TOKEN: $
@@ -9,13 +10,6 @@ branches: ['*']
 timeout: 200
 
 pipeline:
-  notifications:
-    on: [success, failure]
-    thumbnail: https://github.com/user-attachments/assets/429bf6e8-5724-473e-a560-e9e06bbbc143
-    channels:
-      - service: discord
-        url: https://discord.com/api/webhooks/REDACTED_WEBHOOK_ID/REDACTED_WEBHOOK_TOKEN
-
   jobs:
     test_rust:
       env:
