@@ -6,6 +6,7 @@
 ![Rust](https://img.shields.io/badge/rust-stable-orange)
 [![Documentation](https://docs.rs/tokio/badge.svg)](https://pepedinho.github.io/fleet/core_lib/all.html)
 [![codecov](https://codecov.io/github/pepedinho/fleet/graph/badge.svg?token=QNXFBLPKNV)](https://codecov.io/github/pepedinho/fleet)
+[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue)](#license)
 
 Fleet is a **lightweight CI/CD orchestrator** written in Rust.  
 Unlike traditional CI/CD systems (GitHub Actions, GitLab CI, Jenkins…), Fleet is designed to run **directly on your host machine** (Raspberry Pi, server, VPS, NAS…).  
@@ -194,5 +195,32 @@ pipeline:
 4. Global statistics are available via `fleet stats`.
 
 </details>
+
+---
+
+## Contributing
+
+Fleet is a small project, and contributions are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md) — it covers the layout, the required checks (fmt, clippy, tests, build), and the git conventions.
+
+Notable changes are tracked in [CHANGELOG.md](CHANGELOG.md).
+
+---
+
+## License
+
+Licensed under either of [Apache License, Version 2.0](LICENSE) or [MIT license](LICENSE) at your option.
+
+---
+
+## Debugging
+
+The daemon logs structured traces to stderr when built with the `debug-logs` feature:
+
+```bash
+cargo build --release --features debug-logs
+RUST_LOG=debug ./target/release/fleetd
+```
+
+Filtering is controlled by `RUST_LOG` (e.g. `RUST_LOG=warn,fleet=debug`). Relevant knobs: `FLEET_GIT_POLL_TIMEOUT_MS` (default 30000), `FLEET_MAX_GIT_POLLS` (default 2).
 
 ---

@@ -1,0 +1,31 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Build and publish release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build release binaries
+        run: cargo build --release --locked
+
+      - name: Package binaries
+        run: |
+          mkdir -p dist
+          tar -C target/release -czf dist/fleet-linux-x86_64.tar.gz fleet fleetd
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" dist/*.tar.gz \
+            --title "Fleet ${GITHUB_REF_NAME}" \
+            --notes "Changelog: https://github.com/pepedinho/fleet/blob/main/CHANGELOG.md"
