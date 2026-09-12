@@ -22,22 +22,38 @@ use crate::{
 };
 
 /// How long a single git poll (`watch_once`) may take before it is abandoned.
-const GIT_POLL_TIMEOUT: Duration = Duration::from_secs(30);
-/// Blocking git2 calls are kept off the async runtime and bounded in flight so
-/// that one unreachable remote cannot starve the whole daemon's thread pool.
-const MAX_CONCURRENT_GIT_POLLS: usize = 2;
+/// Tunable via `FLEET_GIT_POLL_TIMEOUT_MS` (default 30s).
+fn git_poll_timeout() -> Duration {
+    let default_ms = 30_000u64;
+    let ms = std::env::var("FLEET_GIT_POLL_TIMEOUT_MS")
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
+        .unwrap_or(default_ms);
+    Duration::from_millis(ms)
+}
+
+/// Max number of git polls running at once. Tunable via `FLEET_MAX_GIT_POLLS`
+/// (default 2). Blocking git2 calls are kept off the async runtime and bounded
+/// in flight so that one unreachable remote cannot starve the whole daemon.
+fn max_concurrent_git_polls() -> usize {
+    std::env::var("FLEET_MAX_GIT_POLLS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(2)
+}
 
 #[doc = include_str!("docs/supervisor_loop.md")]
 pub async fn supervisor_loop(state: Arc<AppState>, interval_secs: u64) {
     let mut ticker = interval(Duration::from_secs(interval_secs));
-    let git_semaphore = Arc::new(Semaphore::new(MAX_CONCURRENT_GIT_POLLS));
+    let git_semaphore = Arc::new(Semaphore::new(max_concurrent_git_polls()));
+    let git_timeout = git_poll_timeout();
     let running = Arc::new(Mutex::new(HashSet::new()));
     let save_lock = Arc::new(Mutex::new(()));
 
     loop {
         ticker.tick().await;
 
-        for id in collect_updates(&state, &git_semaphore).await {
+        for id in collect_updates(&state, &git_semaphore, git_timeout).await {
             if running.lock().await.contains(&id) {
                 // A pipeline for this watch is already in flight, skip it.
                 continue;
@@ -63,7 +79,7 @@ pub async fn supervisor_loop(state: Arc<AppState>, interval_secs: u64) {
                 if !branch.is_empty() {
                     let switch_ctx = Arc::clone(&ctx);
                     match timeout(
-                        GIT_POLL_TIMEOUT,
+                        git_timeout,
                         tokio::task::spawn_blocking(move || {
                             Repo::switch_branch(&switch_ctx, &branch)
                         }),
@@ -103,9 +119,13 @@ pub async fn supervisor_loop(state: Arc<AppState>, interval_secs: u64) {
 ///
 /// The state lock is only ever held for cheap in-memory reads/writes: the
 /// slow git network calls happen in `spawn_blocking` after a snapshot has been
-/// taken, so a stalled remote no longer blocks the socket listener, the `run`
-/// command, or any other watch.
-async fn collect_updates(state: &Arc<AppState>, git_semaphore: &Arc<Semaphore>) -> Vec<String> {
+/// taken and are bounded by `git_timeout`, so a stalled remote no longer blocks
+/// the socket listener, the `run` command, or any other watch.
+async fn collect_updates(
+    state: &Arc<AppState>,
+    git_semaphore: &Arc<Semaphore>,
+    git_timeout: Duration,
+) -> Vec<String> {
     let snapshot: Vec<(String, bool, crate::git::repo::Repo)> = {
         let guard = state.watches.read().await;
         guard
@@ -127,7 +147,7 @@ async fn collect_updates(state: &Arc<AppState>, git_semaphore: &Arc<Semaphore>) 
         };
 
         let poll_result = timeout(
-            GIT_POLL_TIMEOUT,
+            git_timeout,
             tokio::task::spawn_blocking(move || {
                 let result = watch_once(&mut repo);
                 result.map(|detected| {
@@ -149,7 +169,7 @@ async fn collect_updates(state: &Arc<AppState>, git_semaphore: &Arc<Semaphore>) 
                 continue;
             }
             Err(_) => {
-                eprintln!("[{id}] ⏱ git poll timed out after {GIT_POLL_TIMEOUT:?}");
+                eprintln!("[{id}] ⏱ git poll timed out after {git_timeout:?}");
                 continue;
             }
         };
@@ -230,5 +250,108 @@ pub async fn start_socket_listener(state: Arc<AppState>) -> anyhow::Result<()> {
                 Err(e) => eprintln!("❌ JSON parsing error: {e}"),
             }
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+    use std::sync::Arc;
+    use std::time::{Duration, Instant};
+
+    use tokio::sync::Semaphore;
+
+    use crate::{
+        config::ProjectConfig,
+        core::state::AppState,
+        core::watcher::WatchContext,
+        git::repo::{Branch, Branches, Repo},
+        log::logger::Logger,
+    };
+
+    use super::collect_updates;
+
+    /// Regression test: a remote that accepts connections but never answers
+    /// used to block the daemon for the OS-level connect/read timeout while
+    /// holding the state lock. `collect_updates` must now give up within the
+    /// configured git poll timeout and keep the rest of the daemon responsive.
+    #[tokio::test]
+    async fn collect_updates_returns_promptly_even_if_remote_hangs() -> anyhow::Result<()> {
+        // A TCP server that accepts connections but never speaks. libgit2's ssh
+        // transport blocks forever waiting for the server's handshake banner.
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+        let port = listener.local_addr()?.port();
+        let url = format!("ssh://127.0.0.1:{port}/repo.git");
+
+        let (quit_tx, quit_rx) = tokio::sync::oneshot::channel::<()>();
+        let hang_server = tokio::spawn(async move {
+            let mut quit_rx = quit_rx;
+            let mut held = Vec::new();
+            loop {
+                tokio::select! {
+                    _ = &mut quit_rx => break,
+                    res = listener.accept() => match res {
+                        // Hold the socket open, never respond.
+                        Ok((stream, _)) => held.push(stream),
+                        Err(_) => break,
+                    },
+                }
+            }
+            drop(held);
+        });
+
+        let ctx = WatchContext {
+            repo: Repo {
+                branches: Branches {
+                    branches: vec![Branch {
+                        branch: "main".to_string(),
+                        last_commit: "old".to_string(),
+                        remote: url.clone(),
+                        name: "hang-repo".to_string(),
+                    }],
+                    last_commit: "old".to_string(),
+                    last_name: "main".to_string(),
+                    name: "main".to_string(),
+                },
+                name: "hang-repo".to_string(),
+                remote: url,
+            },
+            config: ProjectConfig::default(),
+            project_dir: "/nonexistent".to_string(),
+            id: "hang-watch".to_string(),
+            paused: false,
+            logger: Logger::placeholder(),
+        };
+
+        let mut watches = HashMap::new();
+        watches.insert(ctx.id.clone(), ctx);
+        let state = Arc::new(AppState {
+            watches: tokio::sync::RwLock::new(watches),
+        });
+        let sem = Arc::new(Semaphore::new(1));
+
+        let began = Instant::now();
+        let updates = tokio::time::timeout(
+            Duration::from_secs(5),
+            collect_updates(&state, &sem, Duration::from_millis(500)),
+        )
+        .await
+        .map_err(|_| anyhow::anyhow!("collect_updates did not return within 5s"))?;
+
+        assert!(
+            updates.is_empty(),
+            "a hanging remote must not produce updates"
+        );
+        assert!(
+            began.elapsed() < Duration::from_secs(5),
+            "collect_updates must respect the git poll timeout"
+        );
+
+        // Release the held sockets so the leaked blocking git2 task unwinds.
+        drop(quit_tx);
+        let _ = hang_server.await;
+        tokio::time::sleep(Duration::from_millis(300)).await;
+
+        Ok(())
     }
 }
