@@ -201,7 +201,7 @@ async fn handle_add_watch(
             guard.insert(id.clone(), ctx);
         }
         logger
-            .info(&format!("Project registered with ID : {}", &id))
+            .info(&format!("Project registered with ID : {id}"))
             .await?;
         Ok::<_, anyhow::Error>(())
     }
