@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["JobStatus"],"fn":["monitor_process"],"struct":["ExecMetrics","JobMetrics"]};
+window.SIDEBAR_ITEMS = {"constant":["MAX_BUF_SAMPLES"],"enum":["JobStatus"],"fn":["monitor_process"],"struct":["ExecMetrics","JobMetrics"]};
