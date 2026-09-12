@@ -235,9 +235,20 @@ pub async fn start_socket_listener(state: Arc<AppState>) -> anyhow::Result<()> {
             let (read_half, mut write_half) = split(stream);
             let mut reader = BufReader::new(read_half);
             let mut buf = String::new();
-            if let Err(e) = reader.read_line(&mut buf).await {
-                eprintln!("❌ Failed to read from stream: {e}");
-                return;
+
+            // A client that connects but never sends a request must not hold
+            // its spawned task (and socket) forever.
+            let read = timeout(Duration::from_secs(5), reader.read_line(&mut buf)).await;
+            match read {
+                Ok(Ok(_n)) => {}
+                Ok(Err(e)) => {
+                    eprintln!("❌ Failed to read from stream: {e}");
+                    return;
+                }
+                Err(_) => {
+                    eprintln!("❌ No request received within 5s, closing connection");
+                    return;
+                }
             }
 
             let parsed: Result<DaemonRequest, _> = serde_json::from_str(&buf);
