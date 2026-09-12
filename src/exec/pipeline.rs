@@ -158,15 +158,17 @@ async fn update_dependents(
     }
 }
 
-/// Manage job failure (log, métrics, notifications)
+/// Manage job failure (log, metrics, notifications)
 async fn handle_job_failure(
     ctx: &Arc<WatchContext>,
     metrics: &Arc<Mutex<ExecMetrics>>,
     job_name: &str,
     error: anyhow::Error,
 ) -> Result<()> {
-    let mut m = metrics.lock().await;
-    m.job_finished(job_name, false);
+    {
+        let mut m = metrics.lock().await;
+        m.job_finished(job_name, false);
+    }
 
     let need_notif_on_failure = ctx
         .config
@@ -177,6 +179,9 @@ async fn handle_job_failure(
         .unwrap_or(false);
 
     if need_notif_on_failure {
+        // Snapshot metrics, drop the lock, then send the notification: HTTP
+        // must never happen while holding the metrics mutex.
+        let m = metrics.lock().await.clone();
         let err = error.to_string();
         let lines: Vec<&str> = err.lines().collect();
         let first_line = lines.first().unwrap_or(&"");
@@ -230,9 +235,12 @@ async fn finalize_pipeline(
     metrics: &Arc<Mutex<ExecMetrics>>,
     ctx: &Arc<WatchContext>,
 ) -> Result<()> {
-    let mut m = metrics.lock().await;
-    m.finalize();
-    m.save().await?;
+    let m = {
+        let mut m = metrics.lock().await;
+        m.finalize();
+        m.save().await?;
+        m.clone()
+    };
 
     let need_notif_on_success = ctx
         .config
@@ -243,6 +251,7 @@ async fn finalize_pipeline(
         .unwrap_or(false);
 
     if need_notif_on_success {
+        // Snapshot released the lock: HTTP happens outside the metrics mutex.
         discord_send_succes(ctx, &m).await?;
     }
 

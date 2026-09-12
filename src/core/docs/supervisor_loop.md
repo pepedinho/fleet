@@ -4,11 +4,7 @@
 The `supervisor_loop` function is the **main orchestration loop** of the daemon.  
 It periodically checks for updates in all watched repositories and triggers pipelines when new commits are detected.
 
-This function runs indefinitely, performing the following steps at each interval:
-1. Collects updates from all active watches.  
-2. Applies commit updates to the in-memory state.  
-3. Executes the processing pipeline for updated projects.  
-4. Persists the state to disk if changes occurred.  
+The loop never holds the global state lock across blocking I/O, so a slow or unreachable remote cannot freeze the daemon.
 
 ---
 
@@ -25,22 +21,17 @@ This function runs indefinitely, performing the following steps at each interval
    - Waits `interval_secs` seconds between each supervisor cycle.  
 
 2. **Update Collection**  
-   - Calls `collect_updates(&state)` to determine which projects have new commits available.  
-   - Returns a list of `(id, new_commit)` pairs to be updated.  
+   - Calls `collect_updates(&state, &git_semaphore)`, which returns the ids of watches that received a new commit.  
+   - Polling is bounded: git calls run in `spawn_blocking` with a 30s timeout and at most `MAX_CONCURRENT_GIT_POLLS` in flight, so one stalled remote cannot starve the daemon.  
 
-3. **Commit Updates & Pipeline Execution**  
+3. **Pipeline Scheduling**  
    For each updated project:  
-   - Calls `update_commit` to update the in-memory commit reference.  
-   - Retrieves the `WatchContext` via `get_watch_ctx`.  
-   - Runs the associated pipeline with `run_pipeline`.  
-     - On success, logs a ✅ success message and marks the state as dirty.  
+   - Skips it if a pipeline for that watch is already running.  
+   - Clones the `WatchContext`, switches to the branch to be deployed (best-effort, off the runtime), then executes the associated pipeline in a **spawned task** — pipelines are no longer run inline, so a long build does not delay the next supervision cycle.  
+     - On success, persists the state to disk (single-writer, guarded) and logs a ✅ message.  
      - On failure, logs a ❌ error with details.  
 
-4. **State Persistence**  
-   - If at least one pipeline succeeded (`dirty == true`), the updated state is saved to disk using `state.save_to_disk()`.  
-   - Errors during persistence are logged.  
-
-5. **Loop Continuation**  
+4. **Loop Continuation**  
    - The loop repeats indefinitely, making `supervisor_loop` the central control flow of the orchestrator.  
 
 ---
@@ -61,6 +52,7 @@ async fn main() -> anyhow::Result<()> {
 
 ## Notes
 - The supervisor is **always running**, ensuring projects are kept in sync with their remote repositories.  
-- Pipeline execution is performed sequentially within each cycle, but each cycle runs concurrently with other daemon tasks (e.g., socket listener).  
-- Proper error handling ensures that a failing pipeline does not stop the supervisor loop.  
-- The persistence step guarantees that the orchestrator can recover its state after a restart.  
+- The state lock is only ever held for cheap in-memory reads/writes; all blocking git I/O happens outside of it.  
+- A failing pipeline does not stop the supervisor loop.  
+- Per-watch pipelines can overlap across two different watches, but never for the same watch.  
+- The persistence step is serialized so `watches.json` is written by a single writer at a time.

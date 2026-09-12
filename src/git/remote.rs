@@ -56,13 +56,6 @@ pub fn get_remote_branch_hash(url: &str, branch: &str) -> Result<String, Error> 
 
     let refs = remote.list()?;
     tracing::debug!(%url, %branch, refs = refs.len(), "listing remote refs");
-    // let ref_to_find = format!("refs/heads/{branch}");
-
-    // for r in refs {
-    //     if r.name() == ref_to_find {
-    //         return Ok(r.oid().to_string());
-    //     }
-    // }
 
     let branch_name = if let Some(end) = branch.strip_prefix("origin/") {
         end
