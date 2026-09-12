@@ -15,7 +15,13 @@ pub async fn discord_sender(url: &str, embed: &DiscordEmbed) -> Result<()> {
     });
 
     let client = Client::new();
-    let resp = client.post(url).json(&payload).send().await?;
+    // A hung webhook must not stall the pipeline: 10s cap on the whole request.
+    let resp = client
+        .post(url)
+        .json(&payload)
+        .timeout(std::time::Duration::from_secs(10))
+        .send()
+        .await?;
 
     if resp.status().is_success() {
         Ok(())

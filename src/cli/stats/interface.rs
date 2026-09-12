@@ -261,13 +261,11 @@ pub async fn display_stats_interface() -> anyhow::Result<()> {
                         }
                     }
                 }
-                KeyCode::Up => {
-                    if !app.project.is_empty() && app.selected > 0 {
-                        app.selected -= 1;
+                KeyCode::Up if !app.project.is_empty() && app.selected > 0 => {
+                    app.selected -= 1;
 
-                        if app.selected < app.scroll {
-                            app.scroll = app.selected;
-                        }
+                    if app.selected < app.scroll {
+                        app.scroll = app.selected;
                     }
                 }
                 _ => {}
