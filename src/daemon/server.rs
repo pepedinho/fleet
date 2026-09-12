@@ -196,7 +196,7 @@ async fn handle_add_watch(
             guard.retain(|_, existing_ctx| existing_ctx.project_dir != ctx.project_dir);
             guard.insert(id.clone(), ctx.clone());
         }
-ctx.logger
+        ctx.logger
             .info(&format!("Project registered with ID : {id}"))
             .await?;
         Ok::<_, anyhow::Error>(())
