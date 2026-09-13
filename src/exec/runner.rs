@@ -12,7 +12,6 @@ use crate::{
         command::{CommandOutput, exec_background, exec_timeout},
         container::contain_cmd,
     },
-    log::logger::Logger,
 };
 
 const DEFAULT_TIMEOUT: u64 = 300;
@@ -77,18 +76,16 @@ pub async fn run_step(
             env.clone(),
             &ctx.project_dir,
             &ctx.log_path().display().to_string(),
-            &ctx.logger,
             Some(ctx.config.timeout.unwrap_or(DEFAULT_TIMEOUT)),
         )
         .await?;
     } else if step.blocking {
-        background_process(ctx, parts, &ctx.logger, env.clone()).await?;
+        background_process(ctx, parts, env.clone()).await?;
     } else {
         return Ok(Some(
             timeout_process(
                 ctx,
                 parts,
-                &ctx.logger,
                 env.clone(),
                 ctx.config.timeout.unwrap_or(DEFAULT_TIMEOUT),
                 output_strategy,
@@ -103,10 +100,9 @@ pub async fn run_step(
 async fn background_process(
     ctx: &WatchContext,
     parts: Vec<String>,
-    logger: &Logger,
     env: Option<HashMap<String, String>>,
 ) -> Result<(), anyhow::Error> {
-    match exec_background(parts.clone(), ctx, logger, env).await {
+    match exec_background(parts.clone(), ctx, env).await {
         Ok(_) => {}
         Err(e) => {
             return Err(e);
@@ -118,7 +114,6 @@ async fn background_process(
 async fn timeout_process(
     ctx: &WatchContext,
     parts: Vec<String>,
-    logger: &Logger,
     env: Option<HashMap<String, String>>,
     default_timeout: u64,
     output_strategy: &OutpuStrategy,
@@ -127,7 +122,6 @@ async fn timeout_process(
     match exec_timeout(
         parts.clone(),
         ctx,
-        logger,
         default_timeout,
         env,
         output_strategy,

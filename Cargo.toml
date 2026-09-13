@@ -28,7 +28,6 @@ pretty_assertions = "1.3"
 default = []
 force_commit = []
 no-tty = []
-debug-logs = ["dep:tracing-subscriber"]
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
@@ -52,4 +51,4 @@ bollard = "0.19.2"
 futures-util = "0.3.31"
 tempfile = "3.21.0"
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", optional = true, default-features = false, features = ["std", "registry", "fmt", "ansi", "env-filter"] }
+tracing-subscriber = { version = "0.3", features = ["std", "registry", "fmt", "ansi", "env-filter"] }

@@ -214,10 +214,11 @@ Licensed under either of [Apache License, Version 2.0](LICENSE) or [MIT license]
 
 ## Debugging
 
-The daemon logs structured traces to stderr when built with the `debug-logs` feature:
+Every watch writes its runtime log to `~/.fleet/logs/<id>.log`, and events are
+mirrored to stderr by the `tracing` subscriber. The stderr verbosity is
+controlled by `RUST_LOG` (default: warnings and errors only):
 
 ```bash
-cargo build --release --features debug-logs
 RUST_LOG=debug ./target/release/fleetd
 ```
 

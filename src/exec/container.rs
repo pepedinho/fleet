@@ -15,9 +15,8 @@ use tokio::io::AsyncWriteExt;
 use tokio::time::timeout;
 
 use crate::core::id::short_id;
-use crate::log::logger::Logger;
 
-async fn ensure_image(docker: &Docker, image: &str, logger: &Logger) -> Result<()> {
+async fn ensure_image(docker: &Docker, image: &str, log_path: &str) -> Result<()> {
     let image_options = CreateImageOptionsBuilder::default()
         .from_image(image)
         .build();
@@ -29,7 +28,11 @@ async fn ensure_image(docker: &Docker, image: &str, logger: &Logger) -> Result<(
             Ok(info) => {
                 if let Some(s) = info.status {
                     if last != s {
-                        logger.info(&format!("Pulling {image}: {s}")).await?;
+                        tracing::info!(
+                            target: "fleet",
+                            log_path = %log_path,
+                            message = %format!("Pulling {image}: {s}"),
+                        );
                     }
                     last = s.clone();
                 }
@@ -48,12 +51,11 @@ pub async fn contain_cmd(
     env: Option<HashMap<String, String>>,
     dir: &str,
     log_path: &str,
-    logger: &Logger,
     timeout_secs: Option<u64>,
 ) -> Result<()> {
-    logger.info("Building image").await?;
+    tracing::info!(target: "fleet", log_path = %log_path, message = "Building image");
     let docker = Docker::connect_with_local_defaults()?;
-    ensure_image(&docker, image, logger).await?;
+    ensure_image(&docker, image, log_path).await?;
 
     let create_option = CreateContainerOptionsBuilder::default()
         .name(&format!("fleet-job-{}", short_id()))
@@ -114,11 +116,13 @@ pub async fn contain_cmd(
         match timeout(Duration::from_secs(secs), logs_future).await {
             Ok(inner) => inner,
             Err(_) => {
-                logger
-                    .error(&format!(
+                tracing::error!(
+                    target: "fleet",
+                    log_path = %log_path,
+                    message = %format!(
                         "Container execution timed out after {secs} seconds"
-                    ))
-                    .await?;
+                    ),
+                );
                 Err(anyhow::anyhow!(
                     "Container execution timed out after {secs} seconds"
                 ))

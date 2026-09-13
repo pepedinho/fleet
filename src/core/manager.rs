@@ -174,31 +174,32 @@ async fn collect_updates(
             }
         };
 
-        // Apply the new commit under a short lock, pulling the logger out so
-        // the log write itself does not happen under the lock.
-        let logger = {
+        // Apply the new commit under a short lock; the log write is a
+        // `tracing` event emitted after the lock is dropped.
+        let found = {
             let mut guard = state.watches.write().await;
             match guard.get_mut(&id) {
                 Some(ctx) => {
                     ctx.repo.branches.last_commit = new_commit.clone();
                     ctx.repo.branches.last_name = branch.clone();
-                    Some(ctx.logger.clone())
+                    true
                 }
-                None => None,
+                None => false,
             }
         };
-        let Some(logger) = logger else {
+        if !found {
             continue;
-        };
+        }
 
-        logger
-            .info(&format!(
+        tracing::info!(
+            target: "fleet",
+            log_path = %crate::log::logger::Logger::path_by_id(&id).display(),
+            message = %format!(
                 "New commit [{}] from branch {}",
                 format_commit(&new_commit),
                 branch
-            ))
-            .await
-            .ok();
+            ),
+        );
 
         updated.push(id);
     }

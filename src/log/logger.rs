@@ -1,47 +1,34 @@
-use std::{io::SeekFrom, path::PathBuf, sync::Arc};
+use std::path::PathBuf;
 
-use anyhow::Ok;
-use chrono::Local;
 use dirs::home_dir;
 use tokio::{
     fs::{File, remove_file},
-    io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt},
-    sync::Mutex,
+    io::{AsyncReadExt, AsyncSeekExt},
 };
 
+/// Per-watch logger, kept as a thin façade over `tracing`.
+///
+/// The file-based API (`new`, `fetchn`, `path_by_id`, ...) is retained because
+/// the dashboard (`fleet stats`) and the tests read the historical
+/// `~/.fleet/logs/{id}.log` files directly. Writing happens in
+/// `crate::log::file_layer::FileLayer`: each method emits a `tracing` event
+/// carrying the `log_path`, and the layer appends the formatted line to that
+/// file.
 #[derive(Debug, Clone)]
 pub struct Logger {
-    pub file: Arc<Mutex<tokio::fs::File>>,
     path: String,
-    color_enable: bool,
-}
-
-const RESET: &str = "\x1b[0m";
-const BG_BLUE: &str = "\x1b[44m"; // info
-const BG_ORANGE: &str = "\x1b[48;5;208m"; // warning 
-const BG_RED: &str = "\x1b[41m";
-const BG_GREEN: &str = "\x1b[42m"; // job start 
-const BG_MAGENTA: &str = "\x1b[45m"; // job end 
-const FG_BOLD_WHITE: &str = "\x1b[97;1m";
-
-pub enum LogLevel {
-    Info,
-    Warning,
-    Error,
 }
 
 impl Logger {
     pub async fn new(path: &std::path::Path) -> anyhow::Result<Self> {
-        let file = tokio::fs::OpenOptions::new()
+        let _file = tokio::fs::OpenOptions::new()
             .append(true)
             .create(true)
             .open(path)
             .await?;
-        let no_color = std::env::var("FLEET_NO_COLOR").ok().as_deref() == Some("1");
+        crate::log::tracing::init_tracing();
         Ok(Self {
-            file: Arc::new(Mutex::new(file)),
             path: String::from(path.to_str().unwrap_or("")),
-            color_enable: !no_color,
         })
     }
 
@@ -83,7 +70,7 @@ impl Logger {
             let read_size = buffer.len().min(pos as usize);
             pos -= read_size as i64;
 
-            file.seek(SeekFrom::Start(pos as u64)).await?;
+            file.seek(std::io::SeekFrom::Start(pos as u64)).await?;
 
             file.read_exact(&mut buffer[..read_size]).await?;
 
@@ -115,57 +102,45 @@ impl Logger {
 
     pub fn placeholder() -> Logger {
         Logger {
-            file: Arc::new(Mutex::new(tokio::fs::File::from_std(
-                std::fs::File::create("/dev/null").unwrap(),
-            ))),
             path: String::new(),
-            color_enable: false,
         }
-    }
-
-    fn paint_level(level: &str) -> String {
-        match level {
-            "INFO" => format!("{BG_BLUE}{FG_BOLD_WHITE} {level} {RESET}"),
-            "WARNING" => format!("{BG_ORANGE}{FG_BOLD_WHITE} {level} {RESET}"),
-            "ERROR" => format!("{BG_RED}{FG_BOLD_WHITE} {level} {RESET}"),
-            "JOB START" => format!("{BG_GREEN}{FG_BOLD_WHITE} {level} {RESET}"),
-            "JOB END" => format!("{BG_MAGENTA}{FG_BOLD_WHITE} {level} {RESET}"),
-            _ => level.to_string(),
-        }
-    }
-
-    pub async fn log(&self, level: &str, msg: &str) -> anyhow::Result<()> {
-        let mut f = self.file.lock().await;
-        let now = Local::now();
-        let line = format!(
-            "[{}] {}: {}\n",
-            now.format("%Y-%m-%d %H:%M:%S"),
-            Logger::paint_level(level),
-            msg
-        );
-        f.write_all(line.as_bytes()).await?;
-        f.flush().await?;
-        Ok(())
     }
 
     pub async fn info(&self, msg: &str) -> anyhow::Result<()> {
-        self.log("INFO", msg).await
+        tracing::info!(target: "fleet", log_path = %self.path, message = %msg);
+        Ok(())
     }
 
     pub async fn warning(&self, msg: &str) -> anyhow::Result<()> {
-        self.log("WARNING", msg).await
+        tracing::warn!(target: "fleet", log_path = %self.path, message = %msg);
+        Ok(())
     }
 
     pub async fn error(&self, msg: &str) -> anyhow::Result<()> {
-        self.log("ERROR", msg).await
+        tracing::error!(target: "fleet", log_path = %self.path, message = %msg);
+        Ok(())
     }
 
     pub async fn job_start(&self, msg: &str) -> anyhow::Result<()> {
-        self.log("JOB START", msg).await
+        tracing::event!(
+            target: "fleet",
+            tracing::Level::INFO,
+            log_path = %self.path,
+            kind = "JOB START",
+            message = %msg
+        );
+        Ok(())
     }
 
     pub async fn job_end(&self, msg: &str) -> anyhow::Result<()> {
-        self.log("JOB END", msg).await
+        tracing::event!(
+            target: "fleet",
+            tracing::Level::INFO,
+            log_path = %self.path,
+            kind = "JOB END",
+            message = %msg
+        );
+        Ok(())
     }
 
     pub async fn clean(&self) -> anyhow::Result<()> {
@@ -181,31 +156,6 @@ impl Logger {
             Err(anyhow::anyhow!("Failed to find log path"))
         } else {
             Ok(self.path.clone())
-        }
-    }
-
-    pub fn write(msg: &str, level: LogLevel) {
-        let now = Local::now();
-        let log = |s: &str| {
-            let line = format!(
-                "[{}] {}: {}\n",
-                now.format("%Y-%m-%d %H:%M:%S"),
-                Logger::paint_level(s),
-                msg
-            );
-            println!("{line}");
-        };
-
-        match level {
-            LogLevel::Info => {
-                log("INFO");
-            }
-            LogLevel::Warning => {
-                log("WARNING");
-            }
-            LogLevel::Error => {
-                log("ERROR");
-            }
         }
     }
 }
