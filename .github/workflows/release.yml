@@ -6,21 +6,66 @@ on:
       - 'v*'
 
 jobs:
-  release:
-    name: Build and publish release
+  build:
+    name: Build release binaries
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            asset: fleet-linux-x86_64.tar.gz
+            cross: false
+          - target: armv7-unknown-linux-gnueabihf
+            asset: fleet-linux-armv7.tar.gz
+            cross: true
+
     steps:
       - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
 
+      - name: Install cross
+        if: matrix.cross
+        run: cargo install cross --version 0.2.5
+
       - name: Build release binaries
-        run: cargo build --release --locked
+        run: |
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            cross build --release --locked --target "${{ matrix.target }}"
+          else
+            cargo build --release --locked
+          fi
 
       - name: Package binaries
         run: |
           mkdir -p dist
-          tar -C target/release -czf dist/fleet-linux-x86_64.tar.gz fleet fleetd
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            tar -C "target/${{ matrix.target }}/release" -czf "dist/${{ matrix.asset }}" fleet fleetd
+          else
+            tar -C target/release -czf "dist/${{ matrix.asset }}" fleet fleetd
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.target }}
+          path: dist
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: dist-*
+          merge-multiple: true
 
       - name: Create GitHub Release
         env:

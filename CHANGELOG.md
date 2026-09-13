@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Per-job sampling buffer is capped, keeping memory bounded on long-running steps.
 
 ### Added
+- Release assets now include `fleet-linux-armv7.tar.gz` (Raspberry Pi 2, `armv7-unknown-linux-gnueabihf`), built via `cross` in the release workflow.
 - Structured logging via `tracing`, always on: per-watch files are written by a `tracing` layer and events are mirrored to stderr (`RUST_LOG` filtered, default warnings/errors). The `debug-logs` cargo feature is gone.
 - Instrumented git poll path (connect / ls-remote / new-commit detection) for daemon diagnosis.
 - Regression test: a hanging remote must not block `collect_updates` beyond the poll timeout.
