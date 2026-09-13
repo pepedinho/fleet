@@ -95,9 +95,9 @@ impl WatchContext {
 
         if !fs::try_exists(&log_dir).await? {
             fs::create_dir_all(&log_dir).await?;
-            println!("init logs directory : {}", log_dir.display());
+            tracing::info!(target: "fleet", message = %format!("init logs directory : {}", log_dir.display()));
         } else {
-            println!("log folder already exist : {}", log_dir.display());
+            tracing::info!(target: "fleet", message = %format!("log folder already exist : {}", log_dir.display()));
         }
         Ok(())
     }
@@ -114,7 +114,6 @@ pub fn watch_once(repo: &mut Repo) -> Result<Option<String>, anyhow::Error> {
             if remote_hash != b.last_commit {
                 b.last_commit = remote_hash.clone();
                 name = b.branch.clone();
-                println!("new commit detected: {} -> {}", b.last_commit, remote_hash);
                 return Ok(Some(remote_hash));
             }
             Ok(None)

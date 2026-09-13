@@ -88,25 +88,50 @@ pub async fn supervisor_loop(state: Arc<AppState>, interval_secs: u64) {
                     {
                         Ok(Ok(Ok(()))) => {}
                         Ok(Ok(Err(e))) => {
-                            eprintln!("[{id2}] ⚠ branch switch failed (ignored): {e}")
+                            tracing::warn!(
+                                target: "fleet",
+                                log_path = %crate::log::logger::Logger::path_by_id(&id2).display(),
+                                message = %format!("branch switch failed (ignored): {e}"),
+                            );
                         }
                         Ok(Err(e)) => {
-                            eprintln!("[{id2}] ⚠ branch switch task died (ignored): {e}")
+                            tracing::warn!(
+                                target: "fleet",
+                                log_path = %crate::log::logger::Logger::path_by_id(&id2).display(),
+                                message = %format!("branch switch task died (ignored): {e}"),
+                            );
                         }
-                        Err(_) => eprintln!("[{id2}] ⚠ branch switch timed out (ignored)"),
+                        Err(_) => {
+                            tracing::warn!(
+                                target: "fleet",
+                                log_path = %crate::log::logger::Logger::path_by_id(&id2).display(),
+                                message = "branch switch timed out (ignored)",
+                            );
+                        }
                     }
                 }
 
                 match run_pipeline(ctx).await {
                     Ok(_) => {
-                        println!("[{id2}] ✅ Update succeeded");
+                        tracing::info!(
+                            target: "fleet",
+                            log_path = %crate::log::logger::Logger::path_by_id(&id2).display(),
+                            message = "Update succeeded",
+                        );
                         let _save = save_lock.lock().await;
                         if let Err(e) = state.save_to_disk().await {
-                            eprintln!("❌ Failed to save state: {e}");
+                            tracing::error!(
+                                target: "fleet",
+                                message = %format!("Failed to save state: {e}"),
+                            );
                         }
                     }
                     Err(e) => {
-                        eprintln!("[{id2}] ❌ Update failed => {e}");
+                        tracing::error!(
+                            target: "fleet",
+                            log_path = %crate::log::logger::Logger::path_by_id(&id2).display(),
+                            message = %format!("Update failed => {e}"),
+                        );
                     }
                 }
                 running.lock().await.remove(&id2);
@@ -161,15 +186,27 @@ async fn collect_updates(
             Ok(Ok(Ok(Some(found)))) => found,
             Ok(Ok(Ok(None))) => continue,
             Ok(Ok(Err(e))) => {
-                eprintln!("[{id}] ❌ Watch failed: {e}");
+                tracing::error!(
+                    target: "fleet",
+                    log_path = %crate::log::logger::Logger::path_by_id(&id).display(),
+                    message = %format!("Watch failed: {e}"),
+                );
                 continue;
             }
             Ok(Err(e)) => {
-                eprintln!("[{id}] ❌ Watch task panicked: {e}");
+                tracing::error!(
+                    target: "fleet",
+                    log_path = %crate::log::logger::Logger::path_by_id(&id).display(),
+                    message = %format!("Watch task panicked: {e}"),
+                );
                 continue;
             }
             Err(_) => {
-                eprintln!("[{id}] ⏱ git poll timed out after {git_timeout:?}");
+                tracing::warn!(
+                    target: "fleet",
+                    log_path = %crate::log::logger::Logger::path_by_id(&id).display(),
+                    message = %format!("git poll timed out after {git_timeout:?}"),
+                );
                 continue;
             }
         };
@@ -226,7 +263,10 @@ pub async fn start_socket_listener(state: Arc<AppState>) -> anyhow::Result<()> {
     let listener = UnixListener::bind(sock_path)?;
     std::fs::set_permissions(sock_path, std::fs::Permissions::from_mode(0o666))?;
 
-    println!("🔌 fleetd is listening on {sock_path:?}");
+    tracing::info!(
+        target: "fleet",
+        message = %format!("fleetd is listening on {sock_path:?}"),
+    );
 
     loop {
         let (stream, _) = listener.accept().await?;
@@ -243,11 +283,17 @@ pub async fn start_socket_listener(state: Arc<AppState>) -> anyhow::Result<()> {
             match read {
                 Ok(Ok(_n)) => {}
                 Ok(Err(e)) => {
-                    eprintln!("❌ Failed to read from stream: {e}");
+                    tracing::error!(
+                        target: "fleet",
+                        message = %format!("Failed to read from stream: {e}"),
+                    );
                     return;
                 }
                 Err(_) => {
-                    eprintln!("❌ No request received within 5s, closing connection");
+                    tracing::warn!(
+                        target: "fleet",
+                        message = "No request received within 5s, closing connection",
+                    );
                     return;
                 }
             }
@@ -256,10 +302,18 @@ pub async fn start_socket_listener(state: Arc<AppState>) -> anyhow::Result<()> {
             match parsed {
                 Ok(req) => {
                     if let Err(e) = handle_request(req, state, &mut write_half).await {
-                        eprintln!("❌ Request handling failed: {e}");
+                        tracing::error!(
+                            target: "fleet",
+                            message = %format!("Request handling failed: {e}"),
+                        );
                     }
                 }
-                Err(e) => eprintln!("❌ JSON parsing error: {e}"),
+                Err(e) => {
+                    tracing::error!(
+                        target: "fleet",
+                        message = %format!("JSON parsing error: {e}"),
+                    );
+                }
             }
         });
     }
