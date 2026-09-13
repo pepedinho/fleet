@@ -196,9 +196,11 @@ async fn handle_add_watch(
             guard.retain(|_, existing_ctx| existing_ctx.project_dir != ctx.project_dir);
             guard.insert(id.clone(), ctx.clone());
         }
-        ctx.logger
-            .info(&format!("Project registered with ID : {id}"))
-            .await?;
+        tracing::info!(
+            target: "fleet",
+            log_path = %ctx.log_path().display(),
+            message = %format!("Project registered with ID : {id}"),
+        );
         Ok::<_, anyhow::Error>(())
     }
     .await;

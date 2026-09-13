@@ -14,7 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Per-job sampling buffer is capped, keeping memory bounded on long-running steps.
 
 ### Added
-- Structured logging behind the `debug-logs` cargo feature (`RUST_LOG` filtered, written to stderr): `cargo build --release --features debug-logs`.
+- Structured logging via `tracing`, always on: per-watch files are written by a `tracing` layer and events are mirrored to stderr (`RUST_LOG` filtered, default warnings/errors). The `debug-logs` cargo feature is gone.
 - Instrumented git poll path (connect / ls-remote / new-commit detection) for daemon diagnosis.
 - Regression test: a hanging remote must not block `collect_updates` beyond the poll timeout.
 - `cli_test` integration suite is rewritten and enabled in CI (it was entirely commented out).
@@ -24,6 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `src/daemon/utiles` module renamed to `utils` (`tests/utiles_test.rs` → `tests/utils_test.rs`).
 - Bollard pinned to a specific version.
 - Debug `println!`/`eprintln!` leftovers removed.
+- The missing-env-var warning produced while parsing `fleet.yml` now goes to stderr through `tracing` (previously stdout via `Logger::write`). Per-watch log file format is unchanged.
 
 ### Removed
 - Live Discord webhook secret from the repository and its entire history (replaced with redacted placeholders; rotate the webhook, the old token is dead).

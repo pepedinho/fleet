@@ -11,7 +11,6 @@ use tokio::{
 use crate::{
     core::watcher::WatchContext,
     exec::{OutpuStrategy, PipeRegistry, metrics::monitor_process},
-    log::logger::Logger,
 };
 
 pub struct CommandOutput {
@@ -123,7 +122,6 @@ pub async fn run_command_background(
 pub async fn exec_timeout(
     parts: Vec<String>,
     ctx: &WatchContext,
-    logger: &Logger,
     timeout: u64,
     env: Option<HashMap<String, String>>,
     output_strategy: &OutpuStrategy,
@@ -145,22 +143,31 @@ pub async fn exec_timeout(
     {
         Ok(output) => {
             if output.status_code != Some(0) {
-                logger
-                    .error(&format!(
-                        "Command failed with exit code {:?}",
-                        output.status_code
-                    ))
-                    .await?;
+                tracing::error!(
+                    target: "fleet",
+                    log_path = %ctx.log_path().display(),
+                    message = %format!("Command failed with exit code {:?}", output.status_code),
+                );
                 return Err(anyhow::anyhow!("Failed command: {:?}", parts));
             }
-            logger.info(&format!("Command {program} succeeded")).await?;
+            tracing::info!(
+                target: "fleet",
+                log_path = %ctx.log_path().display(),
+                message = %format!("Command {program} succeeded"),
+            );
             Ok(output)
         }
         Err(e) => {
-            logger
-                .error(&format!("Command error or timeout: {parts:?}"))
-                .await?;
-            logger.error(&e.to_string()).await?;
+            tracing::error!(
+                target: "fleet",
+                log_path = %ctx.log_path().display(),
+                message = %format!("Command error or timeout: {parts:?}"),
+            );
+            tracing::error!(
+                target: "fleet",
+                log_path = %ctx.log_path().display(),
+                message = %e.to_string(),
+            );
             Err(anyhow::anyhow!("**Command error:**: `{parts:?}`\n{e}"))
         }
     }
@@ -169,14 +176,15 @@ pub async fn exec_timeout(
 pub async fn exec_background(
     parts: Vec<String>,
     ctx: &WatchContext,
-    logger: &Logger,
     env: Option<HashMap<String, String>>,
 ) -> Result<(), anyhow::Error> {
     let program = &parts[0];
     let args = &parts[1..];
-    logger
-        .info("Command marked as blocking: running in background without waiting")
-        .await?;
+    tracing::info!(
+        target: "fleet",
+        log_path = %ctx.log_path().display(),
+        message = "Command marked as blocking: running in background without waiting",
+    );
     let log_path = ctx.log_path();
 
     let stdout_file = OpenOptions::new()
@@ -198,17 +206,21 @@ pub async fn exec_background(
     )
     .await
     {
-        Ok(_child) => {
-            logger.info("Background command launched").await?;
-        }
+        Ok(_child) => {}
         Err(e) => {
-            logger
-                .error(&format!("Failed to launch background command: {e}"))
-                .await?;
+            tracing::error!(
+                target: "fleet",
+                log_path = %ctx.log_path().display(),
+                message = %format!("Failed to launch background command: {e}"),
+            );
             return Err(e);
         }
     }
 
-    logger.info("Background command launched").await?;
+    tracing::info!(
+        target: "fleet",
+        log_path = %ctx.log_path().display(),
+        message = "Background command launched",
+    );
     Ok(())
 }

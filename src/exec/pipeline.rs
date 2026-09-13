@@ -21,7 +21,6 @@ pub async fn run_pipeline(ctx: Arc<WatchContext>) -> Result<()> {
     let metrics = Arc::new(tokio::sync::Mutex::new(ExecMetrics::new(
         &ctx.id,
         &ctx.repo.name,
-        ctx.logger.clone(),
     )));
 
     let pipe_registry = Arc::new(Mutex::new(PipeRegistry {
@@ -109,7 +108,13 @@ async fn run_job(
         let mut m = metrics.lock().await;
         m.job_started(&job_name);
     }
-    ctx.logger.job_start(&job_name).await?;
+    tracing::event!(
+        target: "fleet",
+        tracing::Level::INFO,
+        log_path = %ctx.log_path().display(),
+        kind = "JOB START",
+        message = %job_name,
+    );
 
     let output_strategy = ctx.config.drop_strategy(&job_name, &ctx)?;
     for step in &job_arc.steps {
@@ -133,11 +138,19 @@ async fn run_job(
         m.job_finished(&job_name, true);
     }
 
-    ctx.logger
-        .info(&format!("Job {job_name} succeeded"))
-        .await?;
+    tracing::info!(
+        target: "fleet",
+        log_path = %ctx.log_path().display(),
+        message = %format!("Job {job_name} succeeded"),
+    );
     update_dependents(&graph, &ready_queue, &dependents).await;
-    ctx.logger.job_end(&job_name).await?;
+    tracing::event!(
+        target: "fleet",
+        tracing::Level::INFO,
+        log_path = %ctx.log_path().display(),
+        kind = "JOB END",
+        message = %job_name,
+    );
     Ok(true)
 }
 
@@ -198,7 +211,11 @@ async fn handle_job_failure(
         .await?;
     }
 
-    ctx.logger.error(&format!("Job {job_name} failed")).await?;
+    tracing::error!(
+        target: "fleet",
+        log_path = %ctx.log_path().display(),
+        message = %format!("Job {job_name} failed"),
+    );
     Ok(())
 }
 
@@ -215,7 +232,11 @@ async fn wait_jobs(
                     let mut m = metrics.lock().await;
                     m.finalize();
                     m.save().await.ok();
-                    ctx.logger.error(&format!("Pipeline failed: {e}")).await?;
+                    tracing::error!(
+                        target: "fleet",
+                        log_path = %ctx.log_path().display(),
+                        message = %format!("Pipeline failed: {e}"),
+                    );
                     return Err(anyhow::anyhow!("Pipeline failed: {e}"));
                 }
             },
@@ -223,7 +244,11 @@ async fn wait_jobs(
                 let mut m = metrics.lock().await;
                 m.finalize();
                 m.save().await.ok();
-                ctx.logger.error(&format!("Pipeline failed: {e}")).await?;
+                tracing::error!(
+                    target: "fleet",
+                    log_path = %ctx.log_path().display(),
+                    message = %format!("Pipeline failed: {e}"),
+                );
                 return Err(anyhow::anyhow!("Pipeline failed: {e}"));
             }
         }

@@ -11,8 +11,6 @@ use tokio::{
     time::sleep,
 };
 
-use crate::log::logger::Logger;
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum JobStatus {
     Pending,
@@ -58,13 +56,10 @@ pub struct ExecMetrics {
     pub max_mem: f32,
 
     pub jobs: HashMap<String, JobMetrics>,
-
-    #[serde(skip, default = "Logger::placeholder")]
-    pub logger: Logger,
 }
 
 impl ExecMetrics {
-    pub fn new(project_id: &str, project_name: &str, logger: Logger) -> Self {
+    pub fn new(project_id: &str, project_name: &str) -> Self {
         Self {
             project_id: project_id.to_string(),
             project_name: project_name.to_string(),
@@ -77,7 +72,6 @@ impl ExecMetrics {
             max_cpu: 0.0,
             max_mem: 0.0,
             jobs: std::collections::HashMap::new(),
-            logger,
         }
     }
 

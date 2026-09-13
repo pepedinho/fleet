@@ -7,10 +7,7 @@ use std::{
 
 use anyhow::{Context, Result};
 
-use crate::{
-    config::{Job, ProjectConfig, stdin_is_tty},
-    log::logger::{LogLevel, Logger},
-};
+use crate::config::{Job, ProjectConfig, stdin_is_tty};
 
 pub fn check_dependency_graph(config: &ProjectConfig) -> Result<()> {
     let pipeline = &config.pipeline;
@@ -106,9 +103,9 @@ pub fn load_config(path: &Path) -> Result<ProjectConfig> {
                 continue;
             }
 
-            Logger::write(
-                &format!(r#""${}" not found for job "{job_name}""#, env_key),
-                LogLevel::Warning,
+            tracing::warn!(
+                target: "fleet",
+                message = %format!(r#""${}" not found for job "{job_name}""#, env_key),
             );
 
             if skipped_missing_variables.contains(env_key) {
