@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["logger","tracing"]};
+window.SIDEBAR_ITEMS = {"mod":["file_layer","logger","tracing"]};

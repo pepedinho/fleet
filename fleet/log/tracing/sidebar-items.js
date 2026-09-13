@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["init_tracing"]};
+window.SIDEBAR_ITEMS = {"fn":["init_tracing"],"static":["INIT"]};
