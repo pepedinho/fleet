@@ -157,10 +157,18 @@ async fn handle_run_pipeline(
         .await?;
         match run_pipeline(Arc::new(ctx)).await {
             Ok(_) => {
-                println!("[{id}] ✅ Update succeeded");
+                tracing::info!(
+                    target: "fleet",
+                    log_path = %crate::log::logger::Logger::path_by_id(id).display(),
+                    message = "Update succeeded",
+                );
             }
             Err(e) => {
-                eprintln!("[{id}] ❌ Update failed => {e}");
+                tracing::error!(
+                    target: "fleet",
+                    log_path = %crate::log::logger::Logger::path_by_id(id).display(),
+                    message = %format!("Update failed => {e}"),
+                );
             }
         }
     }

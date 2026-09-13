@@ -234,8 +234,11 @@ impl Repo {
             .unwrap_or(remote_branch);
 
         if repo.head()?.shorthand().unwrap_or_default() == branch_name {
-            // already on the right branch
-            eprintln!("already on the good branch");
+            tracing::info!(
+                target: "fleet",
+                log_path = %ctx.log_path().display(),
+                message = "already on the good branch",
+            );
             return Ok(());
         }
 

@@ -3,7 +3,7 @@
 //! A subscriber is always installed at boot. Events carrying a `log_path`
 //! field are appended to the matching per-watch log file by
 //! [`super::file_layer::FileLayer`], while the same events are mirrored to
-//! stderr when `RUST_LOG` allows (default: warnings and errors only).
+//! stderr when `RUST_LOG` allows (default: info and above).
 //!
 //! stderr is used on purpose: the dashboard (`fleet stats`) owns stdout, and
 //! stderr keeps logs interleaved safely with it.
@@ -24,7 +24,7 @@ static INIT: OnceLock<()> = OnceLock::new();
 pub fn init_tracing() {
     INIT.get_or_init(|| {
         let filter = EnvFilter::builder()
-            .with_default_directive(LevelFilter::WARN.into())
+            .with_default_directive(LevelFilter::INFO.into())
             .from_env_lossy();
 
         // `FLEET_NO_COLOR` applies to the per-watch log files (honored by
@@ -43,6 +43,11 @@ pub fn init_tracing() {
             .try_init()
             // A subscriber installed before us (embedding harness) silently
             // drops the file layer: say so instead of losing per-watch logs.
-            .map_err(|e| eprintln!("fleet.tracing: failed to install subscriber: {e}"));
+            .map_err(|e| {
+                tracing::error!(
+                    target: "fleet",
+                    message = %format!("fleet.tracing: failed to install subscriber: {e}"),
+                );
+            });
     });
 }

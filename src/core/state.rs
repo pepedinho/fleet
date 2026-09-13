@@ -42,7 +42,10 @@ impl AppState {
 
     pub async fn init_watch_file() -> Result<()> {
         let path = get_watch_path();
-        println!("watch file at: {}", path.to_str().unwrap());
+        tracing::info!(
+            target: "fleet",
+            message = %format!("watch file at: {}", path.to_str().unwrap()),
+        );
         if !fs::try_exists(&path).await? {
             if let Some(parent) = path.parent() {
                 fs::create_dir_all(parent).await?;

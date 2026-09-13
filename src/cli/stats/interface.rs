@@ -171,7 +171,10 @@ pub async fn load_all_stats() -> Result<Vec<ProjectStats>> {
                     projects.entry(pm.project_id.clone()).or_default().push(pm);
                 }
                 Err(e) => {
-                    eprintln!("JSON Error in {path:?}: {e}");
+                    tracing::error!(
+                        target: "fleet",
+                        message = %format!("JSON Error in {path:?}: {e}"),
+                    );
                 }
             }
         }
